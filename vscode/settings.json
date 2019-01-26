@@ -1,0 +1,59 @@
+{
+  "editor.fontSize": 12,
+  "editor.lineHeight": 20,
+  "editor.letterSpacing": 0.5,
+  "files.trimTrailingWhitespace": true,
+  "html.format.enable": true,
+  "html.format.preserveNewLines": true,
+  "editor.tabSize": 2,
+  "editor.fontWeight": "400",
+  "editor.cursorBlinking": "phase",
+  "editor.multiCursorModifier": "ctrlCmd",
+  "editor.colorDecorators": false,
+  "files.eol": "\n",
+  "editor.renderWhitespace": "none",
+  "editor.rulers": [80, 100, 120],
+  "editor.minimap.showSlider": "always",
+  "extensions.ignoreRecommendations": false,
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    "**/.next": true
+  },
+  "emmet.includeLanguages": {
+    "javascript": "javascriptreact"
+  },
+  // show snippets before any other auto completion
+  "editor.snippetSuggestions": "top",
+  // These are all my auto-save configs
+  "editor.formatOnSave": true,
+  // turn it off for JS
+  "[javascript]": {
+    "editor.formatOnSave": false
+  },
+  "[html]": {
+    "editor.formatOnSave": false
+  },
+  "[markdown]": {
+    "editor.formatOnSave": false
+  },
+  "eslint.autoFixOnSave": true,
+  "eslint.alwaysShowStatus": true,
+  "telemetry.enableTelemetry": false,
+  "gitlens.advanced.messages": {
+    "suppressShowKeyBindingsNotice": true
+  },
+  "window.nativeFullScreen": false,
+  // this lets you quick open multiple items in a row and now have the previous ones closed on you
+  "workbench.editor.enablePreviewFromQuickOpen": false,
+  "workbench.editor.tabSizing": "shrink",
+  "workbench.activityBar.visible": true,
+  "workbench.sideBar.location": "left",
+  "workbench.startupEditor": "newUntitledFile",
+  "workbench.colorTheme": "Oceanic Next",
+  "workbench.statusBar.feedback.visible": false,
+  "breadcrumbs.enabled": true
+}
