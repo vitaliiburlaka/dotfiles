@@ -29,16 +29,9 @@
   // show snippets before any other auto completion
   "editor.snippetSuggestions": "top",
   // These are all my auto-save configs
-  "editor.formatOnSave": true,
-  // turn it off for JS
+  "editor.formatOnSave": false,
   "[javascript]": {
-    "editor.formatOnSave": false
-  },
-  "[html]": {
-    "editor.formatOnSave": false
-  },
-  "[markdown]": {
-    "editor.formatOnSave": false
+    "editor.formatOnSave": true
   },
   "eslint.autoFixOnSave": true,
   "eslint.alwaysShowStatus": true,
@@ -46,7 +39,7 @@
   "gitlens.advanced.messages": {
     "suppressShowKeyBindingsNotice": true
   },
-  "window.nativeFullScreen": false,
+  "terminal.integrated.shell.osx": "/bin/bash",
   // this lets you quick open multiple items in a row and now have the previous ones closed on you
   "workbench.editor.enablePreviewFromQuickOpen": false,
   "workbench.editor.tabSizing": "shrink",
@@ -55,5 +48,5 @@
   "workbench.startupEditor": "newUntitledFile",
   "workbench.colorTheme": "Oceanic Next",
   "workbench.statusBar.feedback.visible": false,
-  "breadcrumbs.enabled": true
+  "breadcrumbs.enabled": true,
 }
