@@ -69,7 +69,6 @@ plugins=(
   node
   npm
   nvm
-  zsh-autosuggestions
 )
 
 source $ZSH/oh-my-zsh.sh
