@@ -39,7 +39,6 @@ alias xcode="open -a '/Applications/XCode.app'"
 alias safari="open -a safari"
 alias chrome="open -a google\ chrome"
 alias f='open -a Finder '
-alias fh='open -a Finder .'
 alias textedit='open -a TextEdit'
 alias discord="open -a '/Applications/Discord.app'"
 alias opendiff='/Applications/Xcode.app/Contents/Developer/usr/bin/opendiff'
