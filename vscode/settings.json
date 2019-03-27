@@ -29,12 +29,19 @@
   // show snippets before any other auto completion
   "editor.snippetSuggestions": "top",
   // These are all my auto-save configs
-  "editor.formatOnSave": false,
+  "editor.formatOnSave": true,
+  // turn off for JS and JSX, eslint will handle that
   "[javascript]": {
-    "editor.formatOnSave": true
+    "editor.formatOnSave": false
   },
+  "[javascriptreact]": {
+    "editor.formatOnSave": false
+  },
+  // ESLint plugin will run fix on save
   "eslint.autoFixOnSave": true,
   "eslint.alwaysShowStatus": true,
+  // Optional BUT IMPORTANT: turned off for JS since ESLint already handle that, keeps the Prettier extension enabled for other languages like CSS and HTML
+  "prettier.disableLanguages": ["javascript", "javascriptreact"],
   "telemetry.enableTelemetry": false,
   "gitlens.advanced.messages": {
     "suppressShowKeyBindingsNotice": true
@@ -48,5 +55,5 @@
   "workbench.startupEditor": "newUntitledFile",
   "workbench.colorTheme": "Oceanic Next",
   "workbench.statusBar.feedback.visible": false,
-  "breadcrumbs.enabled": true,
+  "breadcrumbs.enabled": true
 }

@@ -57,8 +57,7 @@ alias sb="source ~/.bashrc"
 alias sz="source ~/.zshrc"
 
 # Homebrew stuff
-alias brewp='brew upgrade --cleanup && brew cask upgrade'
-alias bup='brew update && brew upgrade'
+alias bup='brew update && brew upgrade && brew cask upgrade'
 alias bout='brew outdated'
 
 # Git suff
