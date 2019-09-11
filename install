@@ -1,0 +1,75 @@
+# get current location
+DOTFILES_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+BACKUP_DIR=dotfiles-backup
+
+echo "running from $DOTFILES_DIR..."
+
+# **********************************
+# GIT
+#
+
+# backup ~/.gitconfig
+if [ -f ~/.gitconfig ]; then
+  echo "found old ~/.gitconfig - backing up to $BACKUP_DIR..."
+  mkdir $BACKUP_DIR
+  mv ~/.gitconfig $BACKUP_DIR/.gitconfig
+fi
+
+# link ~/.gitconfig
+echo "sym linking new ~/.gitconfig with $DOTFILES_DIR/.gitconfig!\n"
+ln -s $DOTFILES_DIR/.gitconfig ~/.gitconfig
+
+# *********************************
+# zsh
+#
+if [ -L ~/.zshrc ]; then
+  echo "found .zshrc - backing up to $BACKUP_DIR..."
+  mv ~/.zshrc $BACKUP_DIR/.zshrc
+fi
+
+echo $'linking .zshrc\n'
+ln -s $DOTFILES_DIR/.zshrc ~/.zshrc
+
+echo $'installing zsh-syntax-highlighting'
+git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+
+if [ -L ~/.oh-my-zsh/custom/stefanjudis.zsh-theme ]; then
+  echo "found old stefanjudis.zsh-theme - removing..."
+  rm ~/.oh-my-zsh/custom/stefanjudis.zsh-theme
+fi
+
+echo $'linking stefanjudis zsh-theme\n'
+ln -s $DOTFILES_DIR/stefanjudis.zsh-theme ~/.oh-my-zsh/custom/stefanjudis.zsh-theme
+
+
+
+if [ -f ~/.aliases ]; then
+  echo "found old .aliases - backing up to $BACKUP_DIR..."
+  mv ~/.aliases $BACKUP_DIR/.aliases
+fi
+
+echo $'linking aliases.zsh\n'
+ln -s $DOTFILES_DIR/.aliases ~/.aliases
+
+
+
+
+# *************************************
+# npm
+#
+if [ -L ~/.npmrc ]; then
+  echo "found old .npmrc - removing..."
+  rm ~/.npmrc
+fi
+
+echo $'linking .npmrc\n'
+ln -s $DOTFILES_DIR/.npmrc ~/.npmrc
+
+
+bash $DOTFILES_DIR/brew.sh
+# bash $DOTFILES_DIR/vim.sh
+# bash $DOTFILES_DIR/mac.sh
+bash $DOTFILES_DIR/node.sh
+bash $DOTFILES_DIR/cask.sh
+bash $DOTFILES_DIR/code.sh

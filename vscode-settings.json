@@ -55,9 +55,10 @@
   "workbench.activityBar.visible": true,
   "workbench.sideBar.location": "left",
   "workbench.startupEditor": "newUntitledFile",
-  "workbench.colorTheme": "Oceanic Next",
-  "workbench.statusBar.feedback.visible": false,
-  "breadcrumbs.enabled": true,
+  "workbench.colorTheme": "SynthWave '84",
+  "breadcrumbs.enabled": false,
   "editor.suggestSelection": "first",
-  "vsintellicode.modify.editor.suggestSelection": "automaticallyOverrodeDefaultValue"
+  "vscode_custom_css.imports": [
+    "file:///Users/vitalii/.vscode/extensions/robbowen.synthwave-vscode-0.0.7/synthwave84.css"
+  ]
 }
