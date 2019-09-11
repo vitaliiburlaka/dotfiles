@@ -33,8 +33,11 @@ alias sudo='sudo '
 
 # Get week number
 alias week='date +%V'
+# weather and the moon
+alias weather='curl -4 http://wttr.in/Wroclaw'
+alias moon='curl -4 http://wttr.in/Moon'
 
-# Desktop Programs
+# Desktop Apps
 alias xcode="open -a '/Applications/XCode.app'"
 alias safari="open -a safari"
 alias chrome="open -a google\ chrome"
@@ -52,15 +55,17 @@ alias tu='top -o cpu'
 alias trim="tr -s \" \" | sed 's/^[ ]//g'"
 alias total-files='ls -1 | wc -l | trim'
 
-# Reload the shell with new config
+# Editing and reloading shell config
 alias sb="source ~/.bashrc"
+alias eb='vim ~/.bashrc'
 alias sz="source ~/.zshrc"
+alias ez='vim ~/.zshrc'
 
 # Homebrew stuff
 alias bup='brew update && brew upgrade && brew cask upgrade'
 alias bout='brew outdated'
 
-# Git suff
+# Git stuff
 alias gti="git"
 alias public-key='cat ~/.ssh/id_rsa.pub | pbcopy; echo "public key copied to clipboard"'
 
@@ -87,11 +92,6 @@ command -v md5sum > /dev/null || alias md5sum="md5"
 
 # macOS has no `sha1sum`, so use `shasum` as a fallback
 command -v sha1sum > /dev/null || alias sha1sum="shasum"
-
-# JavaScriptCore REPL
-#jscbin="/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Resources/jsc";
-#[ -e "${jscbin}" ] && alias jsc="${jscbin}";
-#unset jscbin;
 
 # URL-encode strings
 alias urlencode='python -c "import sys, urllib as ul; print ul.quote_plus(sys.argv[1]);"'

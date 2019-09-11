@@ -1,5 +1,6 @@
 # If you come from bash you might have to change your $PATH.
 # export PATH=$HOME/bin:/usr/local/bin:$PATH
+export PATH=:/usr/local/bin:/usr/local/sbin:$HOME/bin:$PATH
 
 # Path to your oh-my-zsh installation.
 export ZSH="/Users/vitalii/.oh-my-zsh"
@@ -55,6 +56,7 @@ POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(status root_indicator background_jobs histor
 # or set a custom format using the strftime function format specifications,
 # see 'man strftime' for details.
 # HIST_STAMPS="mm/dd/yyyy"
+HIST_STAMPS="yyyy-mm-dd"
 
 # Would you like to use another custom folder than $ZSH/custom?
 # ZSH_CUSTOM=/path/to/new-custom-folder
@@ -109,8 +111,13 @@ source $ZSH/oh-my-zsh.sh
 
 # Source aliases
 if [ -f ~/.aliases ]; then
-  . ~/.aliases
+  source ~/.aliases
 fi
 
 # Miniconda path
 export PATH="/usr/local/miniconda3/bin:$PATH"
+
+# Source zsh-syntax-highlighting
+if [ -f /usr/local/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]; then
+  source /usr/local/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+fi
