@@ -10,11 +10,11 @@ alias -- -="cd -"       # jump to previous destination
 
 # File system Shortcuts
 alias o='open .'
-alias projects="cd ~/Projects"
-alias applications='cd ~/Applications'
-alias documents='cd ~/Documents'
+alias projs="cd ~/Projects"
+alias apps='cd ~/Applications'
+alias docs='cd ~/Documents'
 alias downloads='cd ~/Downloads'
-alias pictures='cd ~/Pictures'
+alias pics='cd ~/Pictures'
 alias music='cd ~/Music'
 alias movies='cd ~/Movies'
 alias desktop='cd ~/Desktop'
