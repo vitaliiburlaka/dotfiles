@@ -14,9 +14,6 @@ code --install-extension CoenraadS.bracket-pair-colorizer-2
 # https://marketplace.visualstudio.com/items?itemName=aaron-bond.better-comments
 code --install-extension aaron-bond.better-comments
 
-# https://marketplace.visualstudio.com/items?itemName=naumovs.color-highlight
-code --install-extension naumovs.color-highlight
-
 # https://marketplace.visualstudio.com/items?itemName=mikestead.dotenv
 code --install-extension mikestead.dotenv
 
@@ -44,6 +41,11 @@ code --install-extension msjsdiag.debugger-for-chrome
 code --install-extension jpoissonnier.vscode-styled-components
 
 
+# Python ==========
+# https://marketplace.visualstudio.com/items?itemName=ms-python.python
+code --install-extension ms-python.python
+
+
 # GraphQL ==========
 # https://marketplace.visualstudio.com/items?itemName=apollographql.vscode-apollo
 code --install-extension apollographql.vscode-apollo
@@ -58,37 +60,25 @@ code --install-extension eamodio.gitlens
 
 
 # Themes ==========
-# https://marketplace.visualstudio.com/items?itemName=RobbOwen.synthwave-vscode
-code --install-extension RobbOwen.synthwave-vscode
-
-# https://marketplace.visualstudio.com/items?itemName=be5invis.vscode-custom-css
-code --install-extension be5invis.vscode-custom-css
-
 # https://marketplace.visualstudio.com/items?itemName=mhartington.Oceanic-Next
 code --install-extension mhartington.Oceanic-Next
 
-# https://marketplace.visualstudio.com/items?itemName=sdras.night-owl
-code --install-extension sdras.night-owl
+
+# Docker ==========
+# https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-docker
+code --install-extension ms-azuretools.vscode-docker
 
 
 # Other ==========
 # https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker
 code --install-extension streetsidesoftware.code-spell-checker
 
-# https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-docker
-code --install-extension ms-azuretools.vscode-docker
-
-# https://marketplace.visualstudio.com/items?itemName=MS-vsliveshare.vsliveshare
-code --install-extension MS-vsliveshare.vsliveshare
-
+# Nice Code Screensots
 # https://marketplace.visualstudio.com/items?itemName=pnp.polacode
 code --install-extension pnp.polacode
 
 # https://marketplace.visualstudio.com/items?itemName=alefragnani.project-manager
 code --install-extension alefragnani.project-manager
-
-# https://marketplace.visualstudio.com/items?itemName=ms-python.python
-code --install-extension ms-python.python
 
 # https://marketplace.visualstudio.com/items?itemName=VisualStudioExptTeam.vscodeintellicode
 code --install-extension VisualStudioExptTeam.vscodeintellicode
