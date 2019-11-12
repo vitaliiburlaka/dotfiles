@@ -9,8 +9,9 @@ export ZSH="/Users/vitalii/.oh-my-zsh"
 # load a random theme each time oh-my-zsh is loaded, in which case,
 # to know which specific one was loaded, run: echo $RANDOM_THEME
 # See https://github.com/robbyrussell/oh-my-zsh/wiki/Themes
-ZSH_THEME="powerlevel9k/powerlevel9k"
+ZSH_THEME="powerlevel10k/powerlevel10k"
 # Powerlevel9k config
+POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(context dir virtualenv anaconda vcs)
 POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(status root_indicator background_jobs history)
 
 # Set list of themes to pick from when loading at random
@@ -72,6 +73,7 @@ plugins=(
   node
   npm
   nvm
+  python
 )
 
 source $ZSH/oh-my-zsh.sh
