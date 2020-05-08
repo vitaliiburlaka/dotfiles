@@ -20,11 +20,6 @@ fi
 
 ln -s $DIR/vscode-settings.json ~/Library/Application\ Support/Code/User/settings.json
 
-
-# *********************************
-# markdown client
-brew cask install typora
-
 # *********************************
 brew cask install chrome
 brew cask install iterm2
@@ -32,7 +27,6 @@ brew cask install mpv
 brew cask install discord
 brew cask install obs
 brew cask install spotify
-brew cask install nteract
 brew cask install miniconda
 # brew cask install alfred
 # brew cask install zoomus

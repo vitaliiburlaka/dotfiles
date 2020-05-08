@@ -14,11 +14,6 @@
     120
   ],
   "editor.minimap.showSlider": "always",
-  "[python]": {
-    "editor.insertSpaces": true,
-    "editor.tabSize": 4
-  },
-  "python.formatting.provider": "black",
   "extensions.ignoreRecommendations": false,
   "emmet.includeLanguages": {
     "javascript": "javascriptreact"
@@ -35,23 +30,34 @@
     "editor.formatOnSave": false
   },
   // ESLint plugin will run fix on save
-  "eslint.autoFixOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  },
   "eslint.alwaysShowStatus": true,
   // Optional BUT IMPORTANT: turned off for JS since ESLint already handle that, keeps the Prettier extension enabled for other languages like CSS and HTML
   "prettier.disableLanguages": [
     "javascript",
     "javascriptreact"
   ],
-  "telemetry.enableTelemetry": false,
-  "gitlens.advanced.messages": {
-    "suppressShowKeyBindingsNotice": true
-  },
   "terminal.integrated.fontFamily": "Meslo LG M for Powerline",
   // this lets you quick open multiple items in a row and now have the previous ones closed on you
   "workbench.editor.enablePreviewFromQuickOpen": false,
   "workbench.editor.tabSizing": "shrink",
   "workbench.startupEditor": "newUntitledFile",
   "workbench.colorTheme": "Oceanic Next",
-  "breadcrumbs.enabled": false,
-  "editor.suggestSelection": "first"
+  "editor.suggestSelection": "first",
+  "editor.renameOnType": true,
+  "[python]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 4
+  },
+  "python.formatting.provider": "black",
+  "python.jediEnabled": false,
+  "telemetry.enableTelemetry": false,
+  "gitlens.advanced.messages": {
+    "suppressShowKeyBindingsNotice": true
+  },
+  "editor.semanticTokenColorCustomizations": {
+    "enabled": true
+  },
 }
