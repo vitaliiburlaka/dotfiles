@@ -108,6 +108,11 @@ if [ -f ~/.aliases ]; then
   source ~/.aliases
 fi
 
+# Source .secret DO NOT VERSION THIS
+if [ -f ~/.secret ]; then
+  source ~/.secret
+fi
+
 # Source zsh-syntax-highlighting
 if [ -f /usr/local/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]; then
   source /usr/local/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
