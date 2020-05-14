@@ -10,7 +10,7 @@ alias -- -="cd -"       # jump to previous destination
 
 # File system Shortcuts
 alias o='open .'
-alias projs="cd ~/Projects"
+alias p="cd ~/Projects"
 alias apps='cd ~/Applications'
 alias docs='cd ~/Documents'
 alias downloads='cd ~/Downloads'
@@ -54,7 +54,7 @@ alias space='du -sh ./*'
 alias tu='top -o cpu'
 alias trim="tr -s \" \" | sed 's/^[ ]//g'"
 alias total-files='ls -1 | wc -l | trim'
-alias nodmod-splt-ignore="find . -type d  -path '*node_modules/*' -prune -o -type d -name 'node_modules' -exec touch '{}/.metadata_never_index' \;"
+alias node-splt-ignore="find . -type d  -path '*node_modules/*' -prune -o -type d -name 'node_modules' -exec touch '{}/.metadata_never_index' \;"
 
 # Editing and reloading shell config
 alias sb="source ~/.bashrc"

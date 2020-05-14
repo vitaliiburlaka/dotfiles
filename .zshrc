@@ -2,6 +2,11 @@
 # export PATH=$HOME/bin:/usr/local/bin:$PATH
 export PATH=:/usr/local/bin:/usr/local/sbin:$HOME/bin:$PATH
 
+# Source .secret SHOULD GO BEFORE EVERYTHING ELSE
+if [ -f ~/.secret ]; then
+  source ~/.secret
+fi
+
 # Path to your oh-my-zsh installation.
 export ZSH="/Users/vitalii/.oh-my-zsh"
 
@@ -106,11 +111,6 @@ source $ZSH/oh-my-zsh.sh
 # Source aliases
 if [ -f ~/.aliases ]; then
   source ~/.aliases
-fi
-
-# Source .secret DO NOT VERSION THIS
-if [ -f ~/.secret ]; then
-  source ~/.secret
 fi
 
 # Source zsh-syntax-highlighting
