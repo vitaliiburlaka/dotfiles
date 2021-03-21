@@ -24,7 +24,8 @@
   "editor.formatOnSave": true,
   // turn off for JS and JSX, eslint will handle that
   "[javascript]": {
-    "editor.formatOnSave": false
+    "editor.formatOnSave": false,
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[javascriptreact]": {
     "editor.formatOnSave": false
@@ -39,6 +40,7 @@
     "javascript",
     "javascriptreact"
   ],
+  "debug.javascript.usePreview": true,
   "terminal.integrated.fontFamily": "Meslo LG M for Powerline",
   // this lets you quick open multiple items in a row and now have the previous ones closed on you
   "workbench.editor.enablePreviewFromQuickOpen": false,
@@ -46,18 +48,23 @@
   "workbench.startupEditor": "newUntitledFile",
   "workbench.colorTheme": "Oceanic Next",
   "editor.suggestSelection": "first",
-  "editor.renameOnType": true,
+  // Python settings
   "[python]": {
     "editor.insertSpaces": true,
     "editor.tabSize": 4
   },
   "python.formatting.provider": "black",
-  "python.jediEnabled": false,
-  "telemetry.enableTelemetry": false,
-  "gitlens.advanced.messages": {
-    "suppressShowKeyBindingsNotice": true
+  "python.languageServer": "Microsoft",
+  // Go settings
+  "[go]": {
+    "editor.tabSize": 4
   },
+  "telemetry.enableTelemetry": false,
   "editor.semanticTokenColorCustomizations": {
     "enabled": true
+  },
+  "editor.linkedEditing": true,
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
 }
