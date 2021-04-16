@@ -4,7 +4,8 @@
 [alias]
 	co = checkout
 	br = branch
-	ci = commit
+	cm = commit
 	st = status
 	unstage = reset HEAD --
 	last = log -1 HEAD
+	poh = push orign HEAD
