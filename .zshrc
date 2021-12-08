@@ -72,7 +72,7 @@ HIST_STAMPS="yyyy-mm-dd"
 plugins=(
   git
   brew
-  osx
+  macos
   node
   npm
   nvm
@@ -119,6 +119,17 @@ if [ -f /usr/local/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]; 
   source /usr/local/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 fi
 
+# Functions
+# Usage: compresspdf [input file] [output file] [screen*|ebook|printer|prepress]
+#/screen selects low-resolution output similar to the Acrobat Distiller "Screen Optimized" setting.
+#/ebook selects medium-resolution output similar to the Acrobat Distiller "eBook" setting.
+#/printer selects output similar to the Acrobat Distiller "Print Optimized" setting.
+#/prepress selects output similar to Acrobat Distiller "Prepress Optimized" setting.
+#/default selects output intended to be useful across a wide variety of uses, possibly at the expense of a larger output file.
+compresspdf() {
+    gs -sDEVICE=pdfwrite -dNOPAUSE -dQUIET -dBATCH -dPDFSETTINGS=/${3:-"screen"} -dCompatibilityLevel=1.4 -sOutputFile="$2" "$1"
+}
+
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
 __conda_setup="$('/usr/local/Caskroom/miniconda/base/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
@@ -134,3 +145,7 @@ fi
 unset __conda_setup
 # <<< conda initialize <<<
 
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion

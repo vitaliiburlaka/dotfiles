@@ -15,6 +15,7 @@
   ],
   "editor.minimap.showSlider": "always",
   "extensions.ignoreRecommendations": false,
+  "editor.bracketPairColorization.enabled": true,
   "emmet.includeLanguages": {
     "javascript": "javascriptreact"
   },
@@ -35,12 +36,6 @@
     "source.fixAll.eslint": true
   },
   "eslint.alwaysShowStatus": true,
-  // Optional BUT IMPORTANT: turned off for JS since ESLint already handle that, keeps the Prettier extension enabled for other languages like CSS and HTML
-  "prettier.disableLanguages": [
-    "javascript",
-    "javascriptreact"
-  ],
-  "debug.javascript.usePreview": true,
   "terminal.integrated.fontFamily": "Meslo LG M for Powerline",
   // this lets you quick open multiple items in a row and now have the previous ones closed on you
   "workbench.editor.enablePreviewFromQuickOpen": false,
@@ -54,7 +49,6 @@
     "editor.tabSize": 4
   },
   "python.formatting.provider": "black",
-  "python.languageServer": "Microsoft",
   // Go settings
   "[go]": {
     "editor.tabSize": 4
@@ -67,4 +61,18 @@
   "[json]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
+  "editor.inlineSuggest.enabled": true,
+  "github.copilot.enable": {
+    "*": false,
+    "yaml": true,
+    "plaintext": true,
+    "markdown": true,
+    "javascript": false
+  },
+  "[html]": {
+    "editor.defaultFormatter": "vscode.html-language-features"
+  },
+  "breadcrumbs.filePath": "last",
+  "workbench.iconTheme": "vscode-icons",
+  "vsicons.dontShowNewVersionMessage": true,
 }

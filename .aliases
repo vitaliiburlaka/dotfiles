@@ -73,6 +73,10 @@ alias gst="git status"
 alias gbr="git branch"
 alias gco="git checkout"
 
+# Docker and K8s
+alias dps="docker ps"
+alias k="kubectl"
+
 # Network stuff
 # IP addresses
 alias ip="dig +short myip.opendns.com @resolver1.opendns.com"
