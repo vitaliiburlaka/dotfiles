@@ -63,11 +63,11 @@
   },
   "editor.inlineSuggest.enabled": true,
   "github.copilot.enable": {
-    "*": false,
+    "*": true,
     "yaml": true,
-    "plaintext": true,
+    "plaintext": false,
     "markdown": true,
-    "javascript": false
+    "javascript": true
   },
   "[html]": {
     "editor.defaultFormatter": "vscode.html-language-features"
