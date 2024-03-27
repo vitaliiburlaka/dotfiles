@@ -75,6 +75,7 @@ plugins=(
   macos
   node
   npm
+  yarn
   nvm
   python
 )
@@ -120,14 +121,19 @@ if [ -f /usr/local/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]; 
 fi
 
 # Functions
-# Usage: compresspdf [input file] [output file] [screen*|ebook|printer|prepress]
-#/screen selects low-resolution output similar to the Acrobat Distiller "Screen Optimized" setting.
-#/ebook selects medium-resolution output similar to the Acrobat Distiller "eBook" setting.
-#/printer selects output similar to the Acrobat Distiller "Print Optimized" setting.
-#/prepress selects output similar to Acrobat Distiller "Prepress Optimized" setting.
-#/default selects output intended to be useful across a wide variety of uses, possibly at the expense of a larger output file.
-compresspdf() {
+# Usage: pdfcomp2pres [input file] [output file] [screen*|ebook|printer|prepress]
+#/screen selects low-resolution output similar to the Acrobat Distiller "Screen Optimized" setting. (72 dpi)
+#/ebook selects medium-resolution output similar to the Acrobat Distiller "eBook" setting. (150 dpi)
+#/printer selects output similar to the Acrobat Distiller "Print Optimized" setting. (300 dpi)
+#/prepress selects output similar to Acrobat Distiller "Prepress Optimized" setting. (300 dpi)
+#/default selects output intended to be useful across a wide variety of uses, possibly at the expense of a larger output file. (72 dpi)
+pdfcomp2pres() {
     gs -sDEVICE=pdfwrite -dNOPAUSE -dQUIET -dBATCH -dPDFSETTINGS=/${3:-"screen"} -dCompatibilityLevel=1.4 -sOutputFile="$2" "$1"
+}
+
+# Usage: pdfcomp2res [input file] [output file] [resolution in DPI] default is 200 dpi
+pdfcomp2res() {
+    gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dDownsampleGrayImages=true -dDownsampleMonoImages=true -dColorImageResolution=${3:-"200"} -dGrayImageResolution=${3:-"200"} -dMonoImageResolution=${3:-"200"} -r${3:-"200"} -dNOPAUSE  -dBATCH -sOutputFile="$2" "$1"
 }
 
 # >>> conda initialize >>>

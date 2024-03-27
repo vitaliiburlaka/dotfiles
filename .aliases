@@ -13,12 +13,11 @@ alias o='open .'
 alias p="cd ~/Projects"
 alias apps='cd ~/Applications'
 alias docs='cd ~/Documents'
-alias downloads='cd ~/Downloads'
+alias dls='cd ~/Downloads'
 alias pics='cd ~/Pictures'
 alias music='cd ~/Music'
 alias movies='cd ~/Movies'
 alias desktop='cd ~/Desktop'
-alias dropb="cd ~/Documents/Dropbox"
 
 # Directory listing with colors
 alias sl=ls
@@ -34,7 +33,7 @@ alias sudo='sudo '
 # Get week number
 alias week='date +%V'
 # weather and the moon
-alias weather='curl -4 http://wttr.in/Amsterdam'
+alias weather='curl -4 http://wttr.in/Steinbach'
 alias moon='curl -4 http://wttr.in/Moon'
 
 # Desktop Apps
