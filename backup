@@ -34,13 +34,33 @@ COUNT=0
 # shellcheck source=lib/archive.sh
 . "$DOTFILES_DIR/lib/archive.sh"
 
+usage() {
+  cat <<'USAGE'
+Snapshot the current dotfiles state. Copies rather than moves, so nothing
+on the system is changed.
+
+  ./backup                    snapshot to ~/dotfiles-backup/<stamp>.zip
+  ./backup --no-zip           leave it as a folder instead of zipping
+  ./backup --include-secret   also include ~/.secret (archive becomes 0600)
+  ./backup --output DIR       write somewhere other than ~/dotfiles-backup
+  ./backup --help
+
+Captures every managed file (resolved through its symlink), unmanaged shell
+config that exists but is not tracked here, and snapshots of the installed
+Homebrew packages and VS Code extensions.
+
+~/.secret is excluded by default: it holds API tokens, and an archive in
+$HOME is easy to copy somewhere less private without thinking.
+USAGE
+}
+
 while [ $# -gt 0 ]; do
   case "$1" in
     --no-zip)         DO_ZIP=false ;;
     --include-secret) INCLUDE_SECRET=true ;;
     --output)         BACKUP_ROOT="${2:?--output needs a directory}"; shift ;;
-    -h|--help)        sed -n '2,27p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
-    *)                echo "unknown option: $1" >&2; exit 1 ;;
+    -h|--help)        usage; exit 0 ;;
+    *)                echo "unknown option: $1" >&2; usage >&2; exit 1 ;;
   esac
   shift
 done
@@ -69,9 +89,15 @@ copy_in() {
   mkdir -p "$BACKUP_DIR${dir:+/$dir}"
   # -L resolves symlinks so the archive holds real content. A link into this
   # repo would otherwise back up as a pointer that says nothing about what it
-  # contained at the time.
-  cp -RL "$target" "$BACKUP_DIR${dir:+/$dir}/" 2>/dev/null \
-    || cp -R "$target" "$BACKUP_DIR${dir:+/$dir}/"
+  # contained at the time. A broken link cannot be dereferenced, so fall back
+  # to copying the link itself — but only for that case, so a genuine failure
+  # (permissions, disk) still surfaces instead of being swallowed.
+  if [ -L "$target" ] && [ ! -e "$target" ]; then
+    cp -R "$target" "$BACKUP_DIR${dir:+/$dir}/"
+    desc="$desc — dangling"
+  else
+    cp -RL "$target" "$BACKUP_DIR${dir:+/$dir}/"
+  fi
 
   archive_manifest_add "$BACKUP_DIR" "$rel" "$desc"
   COUNT=$((COUNT + 1))

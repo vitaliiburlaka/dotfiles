@@ -32,12 +32,26 @@ DO_ZIP=true
 STAMP="$(archive_new_stamp)"
 BACKUP_DIR="$BACKUP_ROOT/$STAMP"
 
+usage() {
+  cat <<'USAGE'
+Install these dotfiles by symlinking them into $HOME.
+
+  ./install               link everything, then run brew bundle / nvm / code
+  ./install --link-only   only create the symlinks, skip package installs
+  ./install --no-zip      leave the backup as a folder instead of zipping it
+  ./install --help
+
+Safe to run repeatedly. Anything already at a target path is moved into a
+timestamped backup under ~/dotfiles-backup/ first.
+USAGE
+}
+
 while [ $# -gt 0 ]; do
   case "$1" in
     --link-only) LINK_ONLY=true ;;
     --no-zip)    DO_ZIP=false ;;
-    -h|--help)   sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
-    *)           echo "unknown option: $1" >&2; exit 1 ;;
+    -h|--help)   usage; exit 0 ;;
+    *)           echo "unknown option: $1" >&2; usage >&2; exit 1 ;;
   esac
   shift
 done

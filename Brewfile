@@ -37,11 +37,16 @@ brew "httpie"                      # friendlier curl for HTTP APIs
 brew "teamookla/speedtest/speedtest"  # speedtest.net CLI
 
 # ── Media ────────────────────────────────────────────────────────────────
+brew "ghostscript"                 # gs — required by pdf-compress/pdf-merge
+                                   # in `functions`. Listed explicitly because
+                                   # it was only present as a dependency of
+                                   # neofetch, so removing neofetch would have
+                                   # silently broken both PDF commands.
 brew "ffmpeg"                      # convert/record/stream audio and video;
-                                   # used by the *_to_alac functions
+                                   # used by the flac-to-* functions
 brew "flac"                        # free lossless audio codec + metaflac
-brew "cuetools"                    # cuebreakpoints/cuetag, used by `functions`
-brew "shntool"                     # shnsplit, used by `functions`
+brew "cuetools"                    # cuebreakpoints/cuetag, used by flac-to-tracks
+brew "shntool"                     # shnsplit, used by flac-to-tracks
 brew "exiftool"                    # read/write EXIF metadata
 
 # ── Apple / iOS development ──────────────────────────────────────────────
