@@ -1,6 +1,20 @@
-# If you come from bash you might have to change your $PATH.
-# export PATH=$HOME/bin:/usr/local/bin:$PATH
-export PATH=:/usr/local/bin:/usr/local/sbin:$HOME/bin:$PATH
+# PATH is built here and nowhere else.
+#
+# Keep `path` de-duplicated for the whole session: this file prepends to the
+# inherited $PATH, so without -U a nested shell accumulates the same entries
+# over and over. It stays in effect for nvm/conda/omz below too.
+typeset -U path PATH
+
+# Scrub empty elements inherited from a parent process. An empty PATH element
+# means "current directory", which would let ./ls beat /bin/ls inside any
+# untrusted checkout — which is exactly what a stray leading colon here used
+# to do. Never reintroduce one.
+path=("${(@)path:#}")
+
+path=(/usr/local/bin /usr/local/sbin $path)
+[ -d "$HOME/bin" ] && path=("$HOME/bin" $path)
+[ -d "$HOME/.local/bin" ] && path=("$HOME/.local/bin" $path)
+export PATH
 
 # Source .secret SHOULD GO BEFORE EVERYTHING ELSE
 if [ -f ~/.secret ]; then
@@ -163,7 +177,3 @@ export NVM_DIR="$HOME/.nvm"
 
 export GPG_TTY=$(tty)
 gpgconf --launch gpg-agent
-
-export VK_ICD_FILENAMES=/usr/local/share/vulkan/icd.d/MoltenVK_icd.json
-
-export PATH="$HOME/.local/bin:$PATH"
