@@ -22,20 +22,15 @@ set -euo pipefail
 
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_ROOT="$HOME/dotfiles-backup"
-STAMP="$(date +%Y%m%d-%H%M%S)"
-# Two runs inside the same second would otherwise share a timestamp, and the
-# second would be merged into the first one's archive.
-if [ -e "$BACKUP_ROOT/$STAMP" ] || [ -e "$BACKUP_ROOT/dotfiles-backup-$STAMP.zip" ]; then
-  n=2
-  while [ -e "$BACKUP_ROOT/$STAMP-$n" ] || [ -e "$BACKUP_ROOT/dotfiles-backup-$STAMP-$n.zip" ]; do
-    n=$((n + 1))
-  done
-  STAMP="$STAMP-$n"
-fi
-BACKUP_DIR="$BACKUP_ROOT/$STAMP"
 BACKUP_COUNT=0
 LINK_ONLY=false
 DO_ZIP=true
+
+# shellcheck source=lib/archive.sh
+. "$DOTFILES_DIR/lib/archive.sh"
+
+STAMP="$(archive_new_stamp)"
+BACKUP_DIR="$BACKUP_ROOT/$STAMP"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -49,9 +44,6 @@ done
 
 echo "running from $DOTFILES_DIR"
 
-# Render a path with $HOME collapsed to ~, for readable output.
-short() { printf '%s' "~${1#"$HOME"}"; }
-
 # backup_path <absolute-path>
 #
 # Move whatever currently lives at the given path into this run's backup,
@@ -60,65 +52,20 @@ short() { printf '%s' "~${1#"$HOME"}"; }
 # obvious and two targets sharing a basename cannot overwrite each other —
 # ~/Library/.../Code/User/settings.json being the obvious hazard.
 backup_path() {
-  local target="$1" rel dir desc
+  local target="$1" rel dir
 
-  # Path relative to $HOME; anything outside just loses its leading slash.
-  rel="${target#"$HOME"/}"
-  [ "$rel" = "$target" ] && rel="outside-home/${target#/}"
-
+  rel="$(archive_relpath "$target")"
   dir="$(dirname "$rel")"
   [ "$dir" = "." ] && dir=""
 
-  if [ -L "$target" ]; then
-    desc="symlink -> $(readlink "$target")"
-  elif [ -d "$target" ]; then
-    desc="directory"
-  else
-    desc="regular file"
-  fi
+  [ "$BACKUP_COUNT" -eq 0 ] && \
+    archive_manifest_header "$BACKUP_DIR" "Backup taken by $DOTFILES_DIR/install"
+  archive_manifest_add "$BACKUP_DIR" "$rel" "$(archive_describe "$target")"
 
   mkdir -p "$BACKUP_DIR${dir:+/$dir}"
   mv "$target" "$BACKUP_DIR${dir:+/$dir}/"
 
-  if [ "$BACKUP_COUNT" -eq 0 ]; then
-    {
-      echo "Backup taken $(date '+%Y-%m-%d %H:%M:%S') by $DOTFILES_DIR/install"
-      echo
-      echo "Paths are relative to \$HOME. To restore one:"
-      echo "    cp -R <path-from-this-list> ~/<path-from-this-list>"
-      echo
-    } > "$BACKUP_DIR/MANIFEST.txt"
-  fi
-  printf '%-60s %s\n' "$rel" "$desc" >> "$BACKUP_DIR/MANIFEST.txt"
-
   BACKUP_COUNT=$((BACKUP_COUNT + 1))
-}
-
-# Compress this run's backup folder into a timestamped zip, but only after
-# verifying the archive reads back — this is the sole copy of those files.
-finalize_backup() {
-  [ "$BACKUP_COUNT" -eq 0 ] && return 0
-
-  local archive="$BACKUP_ROOT/dotfiles-backup-$STAMP.zip"
-
-  if [ "$DO_ZIP" = false ] || ! command -v zip > /dev/null 2>&1; then
-    [ "$DO_ZIP" = true ] && echo "  (zip not found; keeping the backup folder)"
-    echo "backed up $BACKUP_COUNT item(s) to $(short "$BACKUP_DIR")/"
-    return 0
-  fi
-
-  # -y stores symlinks as symlinks. Without it zip follows them, which turns
-  # a link into a copy of its target and drops a broken link from the archive
-  # altogether — exactly the cases most worth preserving.
-  if ( cd "$BACKUP_ROOT" && zip -q -r -y "$archive" "$STAMP" ) \
-     && unzip -tqq "$archive" > /dev/null 2>&1; then
-    rm -rf "$BACKUP_DIR"
-    echo "backed up $BACKUP_COUNT item(s) to $(short "$archive")"
-  else
-    rm -f "$archive"
-    echo "  (zip failed verification; keeping the folder instead)"
-    echo "backed up $BACKUP_COUNT item(s) to $(short "$BACKUP_DIR")/"
-  fi
 }
 
 # link_file <source-relative-to-repo> <absolute-target>
@@ -155,26 +102,11 @@ link_file() {
 
 echo
 echo "Linking dotfiles..."
-link_file .zshrc        "$HOME/.zshrc"
-link_file .bashrc       "$HOME/.bashrc"
-link_file .bash_profile "$HOME/.bash_profile"
-link_file .aliases      "$HOME/.aliases"
-link_file functions     "$HOME/.functions"
-link_file .gitconfig    "$HOME/.gitconfig"
-link_file .npmrc        "$HOME/.npmrc"
-
-# Editor config lives outside $HOME's top level.
-link_file vscode-settings.json \
-  "$HOME/Library/Application Support/Code/User/settings.json"
-# Sublime Text 4 dropped the version suffix from its support directory; link
-# whichever layout this machine actually has, rather than creating a stray
-# directory for a version that is not installed.
-for st_dir in "Sublime Text" "Sublime Text 3"; do
-  if [ -d "$HOME/Library/Application Support/$st_dir" ]; then
-    link_file sublime/Preferences.sublime-settings \
-      "$HOME/Library/Application Support/$st_dir/Packages/User/Preferences.sublime-settings"
-  fi
-done
+# The list lives in lib/archive.sh so `backup` snapshots exactly what
+# `install` links, with no chance of the two drifting apart.
+while IFS='|' read -r src dest; do
+  [ -n "$dest" ] && link_file "$src" "$dest"
+done <<< "$(managed_pairs)"
 
 # ~/.secret is sourced by .zshrc but is deliberately NOT in this repo. Create
 # an empty one so a fresh machine has somewhere to put tokens.
@@ -185,7 +117,7 @@ if [ ! -e "$HOME/.secret" ]; then
 fi
 
 echo
-finalize_backup
+archive_finalize "$BACKUP_DIR" "$STAMP" "$BACKUP_COUNT" "$DO_ZIP"
 
 if [ "$LINK_ONLY" = true ]; then
   echo
