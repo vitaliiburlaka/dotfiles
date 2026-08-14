@@ -25,7 +25,8 @@ path=("$HOMEBREW_PREFIX/bin" "$HOMEBREW_PREFIX/sbin" $path)
 [ -d "$HOME/.local/bin" ] && path=("$HOME/.local/bin" $path)
 export PATH
 
-# Source .secret SHOULD GO BEFORE EVERYTHING ELSE
+# Secrets (API tokens and anything else private) live outside this repo and
+# are sourced early, so everything below can rely on them.
 if [ -f ~/.secret ]; then
   source ~/.secret
 fi
@@ -33,69 +34,19 @@ fi
 # Path to your oh-my-zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
 
-# Set name of the theme to load --- if set to "random", it will
-# load a random theme each time oh-my-zsh is loaded, in which case,
-# to know which specific one was loaded, run: echo $RANDOM_THEME
-# See https://github.com/robbyrussell/oh-my-zsh/wiki/Themes
-#ZSH_THEME="agnoster"
 ZSH_THEME="robbyrussell"
-
-# Set list of themes to pick from when loading at random
-# Setting this variable when ZSH_THEME=random will cause zsh to load
-# a theme from this variable instead of looking in ~/.oh-my-zsh/themes/
-# If set to an empty array, this variable will have no effect.
-# ZSH_THEME_RANDOM_CANDIDATES=( "robbyrussell" "agnoster" )
-
-# Uncomment the following line to use case-sensitive completion.
-# CASE_SENSITIVE="true"
-
-# Uncomment the following line to use hyphen-insensitive completion.
-# Case-sensitive completion must be off. _ and - will be interchangeable.
-# HYPHEN_INSENSITIVE="true"
-
-# Auto-update checks cost ~180ms of every single shell start, and stall on
-# the network. Update deliberately instead, with `omz update`.
-zstyle ':omz:update' mode disabled
-
-# Uncomment the following line to change how often to auto-update (in days).
-# export UPDATE_ZSH_DAYS=13
-
-# Uncomment the following line to disable colors in ls.
-# DISABLE_LS_COLORS="true"
-
-# Uncomment the following line to disable auto-setting terminal title.
-# DISABLE_AUTO_TITLE="true"
-
-# Uncomment the following line to enable command auto-correction.
-# ENABLE_CORRECTION="true"
-
-# Uncomment the following line to display red dots whilst waiting for completion.
-# COMPLETION_WAITING_DOTS="true"
-
-# Uncomment the following line if you want to disable marking untracked files
-# under VCS as dirty. This makes repository status check for large repositories
-# much, much faster.
-# DISABLE_UNTRACKED_FILES_DIRTY="true"
-
-# Uncomment the following line if you want to change the command execution time
-# stamp shown in the history command output.
-# You can set one of the optional three formats:
-# "mm/dd/yyyy"|"dd.mm.yyyy"|"yyyy-mm-dd"
-# or set a custom format using the strftime function format specifications,
-# see 'man strftime' for details.
 HIST_STAMPS="yyyy-mm-dd"
 
-# Would you like to use another custom folder than $ZSH/custom?
-# ZSH_CUSTOM=/path/to/new-custom-folder
+# Auto-update checks cost ~180ms of every shell start and stall on the
+# network. Update deliberately instead, with `omz update`.
+zstyle ':omz:update' mode disabled
 
-# Which plugins would you like to load?
-# Standard plugins can be found in ~/.oh-my-zsh/plugins/*
-# Custom plugins may be added to ~/.oh-my-zsh/custom/plugins/
-# Example format: plugins=(rails git textmate ruby lighthouse)
-# Add wisely, as too many plugins slow down shell startup.
-# Note: no `nvm` plugin here on purpose. It sources nvm.sh eagerly and always
-# loads nvm's bash completion, which together cost ~1.9s. See the lazy nvm
-# setup near the bottom of this file.
+# Plugins. Measured against a no-plugin baseline (minimum of five runs):
+# git +30ms, macos and npm +10ms, the rest within noise — so this list is
+# effectively free and does not need trimming.
+#
+# No `nvm` plugin on purpose: it sources nvm.sh eagerly and always loads
+# nvm's bash completion, ~1.9s together. See the lazy nvm setup below.
 plugins=(
   git
   brew
@@ -108,35 +59,30 @@ plugins=(
 
 source $ZSH/oh-my-zsh.sh
 
-# User configuration
+# ── User configuration ───────────────────────────────────────────────────
 
-# export MANPATH="/usr/local/man:$MANPATH"
+export EDITOR='vim'
+export VISUAL="$EDITOR"
+export LANG=en_US.UTF-8
 
-# You may need to manually set your language environment
-# export LANG=en_US.UTF-8
+# History. oh-my-zsh already sets HISTSIZE/SAVEHIST, but with SAVEHIST an
+# order of magnitude smaller than HISTSIZE, so most of an in-memory history
+# is discarded at exit. Keep them aligned and large.
+HISTSIZE=50000
+SAVEHIST=50000
+setopt HIST_IGNORE_ALL_DUPS    # a repeated command replaces its older copy
+setopt HIST_IGNORE_SPACE       # a leading space keeps a command out of history
+setopt HIST_REDUCE_BLANKS
+setopt HIST_VERIFY             # expand !! and friends for review, do not run
 
-# Prompt config
-[[ -n $SSH_CONNECTION ]] || export DEFAULT_USER=$(whoami)
+# SHARE_HISTORY re-reads the history file on every prompt so open tabs see
+# each other's commands. Measured cost: ~40ms of startup (0.19s -> 0.23s)
+# against a 308K history. Kept deliberately — drop this one line to get it
+# back if the history file ever grows enough to be felt.
+setopt SHARE_HISTORY
 
-# Preferred editor for local and remote sessions
-# if [[ -n $SSH_CONNECTION ]]; then
-#   export EDITOR='vim'
-# else
-#   export EDITOR='mvim'
-# fi
-
-# Compilation flags
-# export ARCHFLAGS="-arch $(uname -m)"
-
-# ssh
-# export SSH_KEY_PATH="~/.ssh/rsa_id"
-
-# Set personal aliases, overriding those provided by oh-my-zsh libs,
-# plugins, and themes. Aliases can be placed here, though oh-my-zsh
-# users are encouraged to define aliases within the ZSH_CUSTOM folder.
-# For a full list of active aliases, run `alias`.
-
-# Source aliases
+# Aliases are sourced AFTER oh-my-zsh, so anything defined there overrides
+# the plugins. Keep that in mind before adding a name a plugin already uses.
 if [ -f ~/.aliases ]; then
   source ~/.aliases
 fi
@@ -147,7 +93,6 @@ if [ -f "$HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.
 fi
 
 # Functions
-# Source functions
 if [ -f ~/.functions ]; then
   source ~/.functions
 fi
@@ -156,16 +101,16 @@ fi
 # The stock `conda init` block runs `conda shell.zsh hook`, which spawns
 # Python and costs ~0.7s on every shell. Defer it: the first `conda` call
 # replaces this stub with the real thing.
-export CONDA_PREFIX_DIR="$HOMEBREW_PREFIX/Caskroom/miniconda/base"
+_conda_root="$HOMEBREW_PREFIX/Caskroom/miniconda/base"
 conda() {
   unfunction conda
   local __conda_setup
-  if __conda_setup="$("$CONDA_PREFIX_DIR/bin/conda" shell.zsh hook 2>/dev/null)"; then
+  if __conda_setup="$("$_conda_root/bin/conda" shell.zsh hook 2>/dev/null)"; then
     eval "$__conda_setup"
-  elif [ -f "$CONDA_PREFIX_DIR/etc/profile.d/conda.sh" ]; then
-    . "$CONDA_PREFIX_DIR/etc/profile.d/conda.sh"
+  elif [ -f "$_conda_root/etc/profile.d/conda.sh" ]; then
+    . "$_conda_root/etc/profile.d/conda.sh"
   else
-    path=("$CONDA_PREFIX_DIR/bin" $path)
+    path=("$_conda_root/bin" $path)
   fi
   conda "$@"
 }
@@ -202,7 +147,9 @@ nvm() {
   nvm "$@"
 }
 
-# GPG_TTY is required for pinentry. The agent does not need an explicit
-# launch — gpg and git start it on demand via its socket — and doing so here
-# cost ~1.4s per shell.
-export GPG_TTY=$(tty)
+# GPG_TTY is required for pinentry. zsh already knows the terminal in $TTY,
+# so the usual $(tty) subprocess is only needed as a fallback.
+#
+# The agent does not need an explicit launch — gpg and git start it on
+# demand via its socket — and doing so here cost ~1.4s per shell.
+export GPG_TTY="${TTY:-$(tty)}"
