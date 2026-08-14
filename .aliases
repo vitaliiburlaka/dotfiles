@@ -85,7 +85,10 @@ alias k="kubectl"
 
 # Network stuff
 # IP addresses
-alias ip="dig +short myip.opendns.com @resolver1.opendns.com"
+# Public IP. The long-standing `dig +short myip.opendns.com @resolver1.opendns.com`
+# trick returns an empty answer now — the resolver still resolves, it just no
+# longer answers that query — so this uses HTTPS with a second source as backup.
+alias ip="curl -4 -s --max-time 5 https://icanhazip.com || curl -4 -s --max-time 5 https://ifconfig.me"
 alias lip="ipconfig getifaddr en0"
 alias ips="ifconfig -a | grep -o 'inet6\? \(addr:\)\?\s\?\(\(\([0-9]\+\.\)\{3\}[0-9]\+\)\|[a-fA-F0-9:]\+\)' | awk '{ sub(/inet6? (addr:)? ?/, \"\"); print }'"
 
