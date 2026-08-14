@@ -11,7 +11,16 @@ typeset -U path PATH
 # to do. Never reintroduce one.
 path=("${(@)path:#}")
 
-path=(/usr/local/bin /usr/local/sbin $path)
+# Homebrew lives in /opt/homebrew on Apple Silicon and /usr/local on Intel.
+# Detected with a directory test rather than `brew --prefix`, which is a
+# subprocess and would put startup cost straight back.
+if [[ -d /opt/homebrew ]]; then
+  export HOMEBREW_PREFIX=/opt/homebrew
+else
+  export HOMEBREW_PREFIX=/usr/local
+fi
+
+path=("$HOMEBREW_PREFIX/bin" "$HOMEBREW_PREFIX/sbin" $path)
 [ -d "$HOME/bin" ] && path=("$HOME/bin" $path)
 [ -d "$HOME/.local/bin" ] && path=("$HOME/.local/bin" $path)
 export PATH
@@ -22,7 +31,7 @@ if [ -f ~/.secret ]; then
 fi
 
 # Path to your oh-my-zsh installation.
-export ZSH="/Users/vitalii/.oh-my-zsh"
+export ZSH="$HOME/.oh-my-zsh"
 
 # Set name of the theme to load --- if set to "random", it will
 # load a random theme each time oh-my-zsh is loaded, in which case,
@@ -133,8 +142,8 @@ if [ -f ~/.aliases ]; then
 fi
 
 # Source zsh-syntax-highlighting
-if [ -f /usr/local/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]; then
-  source /usr/local/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+if [ -f "$HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]; then
+  source "$HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
 fi
 
 # Functions
@@ -147,7 +156,7 @@ fi
 # The stock `conda init` block runs `conda shell.zsh hook`, which spawns
 # Python and costs ~0.7s on every shell. Defer it: the first `conda` call
 # replaces this stub with the real thing.
-export CONDA_PREFIX_DIR="/usr/local/Caskroom/miniconda/base"
+export CONDA_PREFIX_DIR="$HOMEBREW_PREFIX/Caskroom/miniconda/base"
 conda() {
   unfunction conda
   local __conda_setup
