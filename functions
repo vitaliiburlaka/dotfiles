@@ -1,3 +1,20 @@
+# PDF compression via ghostscript
+#
+# Usage: pdfcomp2pres [input file] [output file] [screen*|ebook|printer|prepress]
+#   screen   low-resolution, like Acrobat Distiller "Screen Optimized" (72 dpi)
+#   ebook    medium-resolution, like "eBook" (150 dpi)
+#   printer  like "Print Optimized" (300 dpi)
+#   prepress like "Prepress Optimized" (300 dpi)
+#   default  useful across a wide variety of uses, at the cost of size (72 dpi)
+pdfcomp2pres() {
+  gs -sDEVICE=pdfwrite -dNOPAUSE -dQUIET -dBATCH -dPDFSETTINGS=/${3:-"screen"} -dCompatibilityLevel=1.4 -sOutputFile="$2" "$1"
+}
+
+# Usage: pdfcomp2res [input file] [output file] [resolution in DPI, default 200]
+pdfcomp2res() {
+  gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dDownsampleGrayImages=true -dDownsampleMonoImages=true -dColorImageResolution=${3:-"200"} -dGrayImageResolution=${3:-"200"} -dMonoImageResolution=${3:-"200"} -r${3:-"200"} -dNOPAUSE -dBATCH -sOutputFile="$2" "$1"
+}
+
 convert_cue_flac_to_alac() {
   # Default cover art filename
   cover_filename="folder.jpg"
