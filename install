@@ -2,25 +2,124 @@
 #
 # Install these dotfiles by symlinking them into $HOME.
 #
-# Safe to run repeatedly: every link is created with `ln -sfn`, and any real
-# file already sitting at a target path is moved into a timestamped backup
-# directory first. Re-running is a no-op apart from refreshing the links.
+# Safe to run repeatedly: every link is created with `ln -sfn`, and anything
+# already sitting at a target path is moved into a timestamped backup first.
+# Re-running is a no-op apart from refreshing the links.
 #
-#   ./install            link everything, then run brew bundle / nvm / code
-#   ./install --link-only  only create the symlinks, skip package installs
+#   ./install               link everything, then run brew bundle / nvm / code
+#   ./install --link-only   only create the symlinks, skip package installs
+#   ./install --no-zip      leave the backup as a folder instead of zipping it
+#
+# Backups land in ~/dotfiles-backup/, versioned by timestamp:
+#
+#   ~/dotfiles-backup/dotfiles-backup-20260814-101500.zip   (default)
+#   ~/dotfiles-backup/20260814-101500/                      (with --no-zip)
+#
+# Each backup keeps every file at its path relative to $HOME and includes a
+# MANIFEST.txt describing what was taken and how to put it back.
 
 set -euo pipefail
 
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKUP_DIR="$HOME/dotfiles-backup/$(date +%Y%m%d-%H%M%S)"
+BACKUP_ROOT="$HOME/dotfiles-backup"
+STAMP="$(date +%Y%m%d-%H%M%S)"
+# Two runs inside the same second would otherwise share a timestamp, and the
+# second would be merged into the first one's archive.
+if [ -e "$BACKUP_ROOT/$STAMP" ] || [ -e "$BACKUP_ROOT/dotfiles-backup-$STAMP.zip" ]; then
+  n=2
+  while [ -e "$BACKUP_ROOT/$STAMP-$n" ] || [ -e "$BACKUP_ROOT/dotfiles-backup-$STAMP-$n.zip" ]; do
+    n=$((n + 1))
+  done
+  STAMP="$STAMP-$n"
+fi
+BACKUP_DIR="$BACKUP_ROOT/$STAMP"
+BACKUP_COUNT=0
 LINK_ONLY=false
+DO_ZIP=true
 
-[ "${1:-}" = "--link-only" ] && LINK_ONLY=true
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --link-only) LINK_ONLY=true ;;
+    --no-zip)    DO_ZIP=false ;;
+    -h|--help)   sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *)           echo "unknown option: $1" >&2; exit 1 ;;
+  esac
+  shift
+done
 
 echo "running from $DOTFILES_DIR"
 
 # Render a path with $HOME collapsed to ~, for readable output.
 short() { printf '%s' "~${1#"$HOME"}"; }
+
+# backup_path <absolute-path>
+#
+# Move whatever currently lives at the given path into this run's backup,
+# preserving its location relative to $HOME. Keeping the structure (rather
+# than dumping basenames into one flat directory) means provenance is
+# obvious and two targets sharing a basename cannot overwrite each other —
+# ~/Library/.../Code/User/settings.json being the obvious hazard.
+backup_path() {
+  local target="$1" rel dir desc
+
+  # Path relative to $HOME; anything outside just loses its leading slash.
+  rel="${target#"$HOME"/}"
+  [ "$rel" = "$target" ] && rel="outside-home/${target#/}"
+
+  dir="$(dirname "$rel")"
+  [ "$dir" = "." ] && dir=""
+
+  if [ -L "$target" ]; then
+    desc="symlink -> $(readlink "$target")"
+  elif [ -d "$target" ]; then
+    desc="directory"
+  else
+    desc="regular file"
+  fi
+
+  mkdir -p "$BACKUP_DIR${dir:+/$dir}"
+  mv "$target" "$BACKUP_DIR${dir:+/$dir}/"
+
+  if [ "$BACKUP_COUNT" -eq 0 ]; then
+    {
+      echo "Backup taken $(date '+%Y-%m-%d %H:%M:%S') by $DOTFILES_DIR/install"
+      echo
+      echo "Paths are relative to \$HOME. To restore one:"
+      echo "    cp -R <path-from-this-list> ~/<path-from-this-list>"
+      echo
+    } > "$BACKUP_DIR/MANIFEST.txt"
+  fi
+  printf '%-60s %s\n' "$rel" "$desc" >> "$BACKUP_DIR/MANIFEST.txt"
+
+  BACKUP_COUNT=$((BACKUP_COUNT + 1))
+}
+
+# Compress this run's backup folder into a timestamped zip, but only after
+# verifying the archive reads back — this is the sole copy of those files.
+finalize_backup() {
+  [ "$BACKUP_COUNT" -eq 0 ] && return 0
+
+  local archive="$BACKUP_ROOT/dotfiles-backup-$STAMP.zip"
+
+  if [ "$DO_ZIP" = false ] || ! command -v zip > /dev/null 2>&1; then
+    [ "$DO_ZIP" = true ] && echo "  (zip not found; keeping the backup folder)"
+    echo "backed up $BACKUP_COUNT item(s) to $(short "$BACKUP_DIR")/"
+    return 0
+  fi
+
+  # -y stores symlinks as symlinks. Without it zip follows them, which turns
+  # a link into a copy of its target and drops a broken link from the archive
+  # altogether — exactly the cases most worth preserving.
+  if ( cd "$BACKUP_ROOT" && zip -q -r -y "$archive" "$STAMP" ) \
+     && unzip -tqq "$archive" > /dev/null 2>&1; then
+    rm -rf "$BACKUP_DIR"
+    echo "backed up $BACKUP_COUNT item(s) to $(short "$archive")"
+  else
+    rm -f "$archive"
+    echo "  (zip failed verification; keeping the folder instead)"
+    echo "backed up $BACKUP_COUNT item(s) to $(short "$BACKUP_DIR")/"
+  fi
+}
 
 # link_file <source-relative-to-repo> <absolute-target>
 #
@@ -40,11 +139,13 @@ link_file() {
     return
   fi
 
-  # Something real is in the way — preserve it before overwriting.
-  if [ -e "$dest" ] && [ ! -L "$dest" ]; then
-    mkdir -p "$BACKUP_DIR"
-    mv "$dest" "$BACKUP_DIR/"
-    echo "  backup $(short "$dest") -> $(short "$BACKUP_DIR")/"
+  # Anything else in the way gets preserved first. That includes symlinks
+  # pointing somewhere other than this repo — `ln -sfn` would overwrite one
+  # without trace, silently discarding a link into another dotfiles setup.
+  # -L is tested separately because -e is false for a broken symlink.
+  if [ -e "$dest" ] || [ -L "$dest" ]; then
+    backup_path "$dest"
+    echo "  backup $(short "$dest")"
   fi
 
   mkdir -p "$(dirname "$dest")"
@@ -82,6 +183,9 @@ if [ ! -e "$HOME/.secret" ]; then
   chmod 600 "$HOME/.secret"
   echo "  create ~/.secret (empty; put API tokens here, never in the repo)"
 fi
+
+echo
+finalize_backup
 
 if [ "$LINK_ONLY" = true ]; then
   echo
