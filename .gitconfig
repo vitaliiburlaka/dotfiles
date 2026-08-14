@@ -1,6 +1,38 @@
 [user]
 	name = Vitalii Burlaka
 	email = vitalii.burlaka@gmail.com
+[core]
+	# XDG location git already reads by default; set explicitly so it is
+	# discoverable rather than implicit.
+	excludesfile = ~/.config/git/ignore
+
+[init]
+	defaultBranch = main
+
+[push]
+	# `git push` on a new branch sets its upstream instead of erroring out
+	# with "no upstream branch" and making you retype --set-upstream.
+	autoSetupRemote = true
+
+[pull]
+	# Rebase local commits on top of upstream rather than recording a merge
+	# commit for every routine `git pull`.
+	rebase = true
+
+[fetch]
+	# Drop local refs for branches deleted on the remote.
+	prune = true
+
+[rerere]
+	# Remember how a conflict was resolved and reapply it if the same
+	# conflict comes back — useful when rebasing repeatedly.
+	enabled = true
+
+[diff]
+	# Distinguish moved lines from added/removed ones.
+	colorMoved = zebra
+	algorithm = histogram
+
 [alias]
 	co = checkout
 	br = branch
