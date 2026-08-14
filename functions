@@ -1,148 +1,286 @@
-# PDF compression via ghostscript
+# Shell functions, sourced as ~/.functions by .zshrc.
 #
-# Usage: pdfcomp2pres [input file] [output file] [screen*|ebook|printer|prepress]
-#   screen   low-resolution, like Acrobat Distiller "Screen Optimized" (72 dpi)
-#   ebook    medium-resolution, like "eBook" (150 dpi)
-#   printer  like "Print Optimized" (300 dpi)
-#   prepress like "Prepress Optimized" (300 dpi)
-#   default  useful across a wide variety of uses, at the cost of size (72 dpi)
-pdfcomp2pres() {
-  gs -sDEVICE=pdfwrite -dNOPAUSE -dQUIET -dBATCH -dPDFSETTINGS=/${3:-"screen"} -dCompatibilityLevel=1.4 -sOutputFile="$2" "$1"
-}
+# Naming: kebab-case, verb-ish, so tab completion groups related commands
+# (flac-to-tracks / flac-to-alac). Back-compat aliases for the older names
+# live at the bottom of this file.
 
-# Usage: pdfcomp2res [input file] [output file] [resolution in DPI, default 200]
-pdfcomp2res() {
-  gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dDownsampleGrayImages=true -dDownsampleMonoImages=true -dColorImageResolution=${3:-"200"} -dGrayImageResolution=${3:-"200"} -dMonoImageResolution=${3:-"200"} -r${3:-"200"} -dNOPAUSE -dBATCH -sOutputFile="$2" "$1"
-}
+# ── Internal helpers ─────────────────────────────────────────────────────
 
-convert_cue_flac_to_alac() {
-  # Default cover art filename
-  cover_filename="folder.jpg"
-  cleanup_backup=false
-
-  # Parse optional flags
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-      -cleanupBackup)
-        cleanup_backup=true
-        shift
-        ;;
-      -coverFileName)
-        cover_filename="$2"
-        shift 2
-        ;;
-      *)
-        echo "Unknown flag: $1"
-        return 1
-        ;;
-    esac
+# _dt_require <caller> <cmd>...
+# Report every missing command at once rather than failing on the first.
+_dt_require() {
+  local caller="$1" missing="" c
+  shift
+  for c in "$@"; do
+    command -v "$c" > /dev/null 2>&1 || missing="$missing $c"
   done
+  [ -z "$missing" ] && return 0
+  printf '%s: missing required command(s):%s\n' "$caller" "$missing" >&2
+  return 1
+}
 
-  # Find the .cue and .flac files in the current directory
-  cuefile=$(find . -type f -name "*.cue" | head -n 1)
-  flacfile=$(find . -type f -name "*.flac" | head -n 1)
+# _dt_ls_match <glob>
+# List matching files in the current directory, one per line, printing
+# nothing when nothing matches. Uses find rather than a bare glob because
+# bash passes an unmatched pattern through literally while zsh aborts the
+# calling function outright — this file is sourced by zsh.
+_dt_ls_match() {
+  find . -maxdepth 1 -type f -name "$1" 2>/dev/null | sed 's|^\./||' | LC_ALL=C sort
+}
 
-  # Check if the .cue and .flac files exist
-  if [ -z "$cuefile" ] || [ -z "$flacfile" ]; then
-    echo "Error: .cue or .flac file not found."
+_dt_first_match() { _dt_ls_match "$1" | head -n 1; }
+
+# _dt_tag <file> <TAGNAME>
+# Read one FLAC tag. Splits on the first = only, so values containing = are
+# not truncated the way `cut -d= -f2` truncates them.
+_dt_tag() { metaflac --show-tag="$2" "$1" 2>/dev/null | sed 's/^[^=]*=//'; }
+
+# _dt_track_num <raw>
+# Normalise a TRACKNUMBER tag to a plain integer. Real-world tags are often
+# "3/12", and a value like "08" makes printf %d fail as an invalid octal
+# number — both crash the conversion loop otherwise.
+_dt_track_num() {
+  local n="${1%%/*}"
+  n="$(printf '%s' "$n" | sed 's/[^0-9].*$//; s/^0*//')"
+  [ -n "$n" ] || n=0
+  printf '%s' "$n"
+}
+
+# _dt_safe_name <string>
+# Strip characters that cannot appear in a filename.
+_dt_safe_name() { printf '%s' "$1" | tr '/:' '--'; }
+
+# ── PDF ──────────────────────────────────────────────────────────────────
+
+# Compress a PDF with ghostscript.
+#
+# Usage: pdf-compress <input.pdf> <output.pdf> [quality]
+#
+# quality is either a ghostscript preset or a resolution in DPI:
+#   screen    72 dpi,  smallest — like Distiller "Screen Optimized" (default)
+#   ebook     150 dpi          — like "eBook"
+#   printer   300 dpi          — like "Print Optimized"
+#   prepress  300 dpi          — like "Prepress Optimized", preserves colour
+#   default   72 dpi           — broadly useful, larger files
+#   <number>                   — downsample every image to that many DPI
+#
+# Replaces pdfcomp2pres (preset) and pdfcomp2res (DPI), which were the same
+# ghostscript call with a different quality knob.
+pdf-compress() {
+  local input="$1" output="$2" quality="${3:-screen}"
+
+  if [ $# -lt 2 ]; then
+    echo "usage: pdf-compress <input.pdf> <output.pdf> [screen|ebook|printer|prepress|default|DPI]" >&2
+    return 1
+  fi
+  _dt_require pdf-compress gs || return 1
+  if [ ! -f "$input" ]; then
+    echo "pdf-compress: no such file: $input" >&2
     return 1
   fi
 
-  # Split the FLAC file using the .cue file
-  cuebreakpoints "$cuefile" | shnsplit -o flac "$flacfile"
+  local -a args
+  args=(-sDEVICE=pdfwrite -dNOPAUSE -dQUIET -dBATCH -dCompatibilityLevel=1.4)
 
-  # Apply metadata from the .cue file to the split FLAC tracks
-  cuetag.sh "$cuefile" split-track*.flac
+  case "$quality" in
+    '' | *[!0-9]*)
+      case "$quality" in
+        screen | ebook | printer | prepress | default) ;;
+        *)
+          echo "pdf-compress: unknown quality '$quality' (expected a preset or a number)" >&2
+          return 1
+          ;;
+      esac
+      args+=("-dPDFSETTINGS=/$quality")
+      ;;
+    *)
+      args+=(
+        -dDownsampleColorImages=true
+        -dDownsampleGrayImages=true
+        -dDownsampleMonoImages=true
+        "-dColorImageResolution=$quality"
+        "-dGrayImageResolution=$quality"
+        "-dMonoImageResolution=$quality"
+        "-r$quality"
+      )
+      ;;
+  esac
 
-  # Create a backup directory to store original FLAC files
-  mkdir -p backup
-
-  # Process each split track
-  for f in split-track*.flac; do
-    # Extract track metadata
-    title=$(metaflac --show-tag=TITLE "$f" | cut -d= -f2)
-    track=$(metaflac --show-tag=TRACKNUMBER "$f" | cut -d= -f2)
-
-    # Convert FLAC to ALAC (.m4a) and embed cover art
-    ffmpeg -y -i "$f" -i "$cover_filename" -c:a alac -map 0:a -map 1 -c:v mjpeg -disposition:v attached_pic \
-      -metadata:s:v title="Album cover" -metadata:s:v comment="Cover (front)" \
-      "$(printf "%02d - %s.m4a" "$track" "$title")"
-
-    # Move the original FLAC file to the backup folder
-    mv "$f" backup/
-  done
-
-  # Optionally clean up the backup folder
-  if [ "$cleanup_backup" = true ]; then
-    rm -rf backup
-  fi
-
-  echo "Conversion complete. Original FLAC files are in the 'backup' folder."
-  if [ "$cleanup_backup" = true ]; then
-    echo "Backup folder has been cleaned up."
-  fi
+  gs "${args[@]}" -sOutputFile="$output" "$input" || return 1
+  echo "pdf-compress: wrote $output"
 }
 
+# Merge PDFs into one, with ghostscript.
+#
+# Usage: pdf-merge <output.pdf> <input.pdf>...
+#
+# Replaces the old `mergepdf` alias, which pointed at an Automator action
+# Apple has since removed from macOS.
+pdf-merge() {
+  local output="$1"
 
+  if [ $# -lt 3 ]; then
+    echo "usage: pdf-merge <output.pdf> <input.pdf> <input.pdf>..." >&2
+    return 1
+  fi
+  _dt_require pdf-merge gs || return 1
+  shift
 
-convert_flac_to_alac() {
-  # Default cover art filename
-  cover_filename="folder.jpg"
-  cleanup_backup=false
+  gs -sDEVICE=pdfwrite -dNOPAUSE -dQUIET -dBATCH -sOutputFile="$output" "$@" || return 1
+  echo "pdf-merge: wrote $output from $# file(s)"
+}
 
-  # Parse optional flags
-  while [[ $# -gt 0 ]]; do
+# ── Audio ────────────────────────────────────────────────────────────────
+
+# Split a single album FLAC into per-track FLAC files using its cue sheet.
+#
+# Usage: flac-to-tracks [--cue FILE] [--keep-source]
+#
+# Works on the current directory. Finds the .cue sheet and the album .flac,
+# splits on the cue breakpoints, applies each track's tags from the cue, and
+# renames the results to "NN - Title.flac". The original album file is moved
+# into ./backup/ unless --keep-source is given.
+flac-to-tracks() {
+  local cuefile="" album="" keep_source=false
+  local f track title newname
+
+  while [ $# -gt 0 ]; do
     case "$1" in
-      -cleanupBackup)
-        cleanup_backup=true
-        shift
-        ;;
-      -coverFileName)
-        cover_filename="$2"
-        shift 2
-        ;;
-      *)
-        echo "Unknown flag: $1"
-        return 1
-        ;;
+      --cue)
+        [ -n "${2:-}" ] || { echo "flac-to-tracks: --cue needs a file" >&2; return 1; }
+        cuefile="$2"; shift 2 ;;
+      --keep-source) keep_source=true; shift ;;
+      -h | --help)
+        echo "usage: flac-to-tracks [--cue FILE] [--keep-source]"; return 0 ;;
+      *) echo "flac-to-tracks: unknown option: $1" >&2; return 1 ;;
     esac
   done
 
-  # Create a backup directory to store original FLAC files
-  mkdir -p backup
+  _dt_require flac-to-tracks cuebreakpoints shnsplit cuetag.sh metaflac || return 1
 
-  # Process each FLAC file in the directory
-  for f in *.flac; do
-    # Skip non-FLAC files
-    if [[ ! -f "$f" ]]; then
-      continue
-    fi
+  [ -n "$cuefile" ] || cuefile="$(_dt_first_match '*.cue')"
+  album="$(_dt_first_match '*.flac')"
 
-    # Extract track metadata
-    title=$(metaflac --show-tag=TITLE "$f" | cut -d= -f2)
-    track=$(metaflac --show-tag=TRACKNUMBER "$f" | cut -d= -f2)
+  if [ -z "$cuefile" ] || [ -z "$album" ]; then
+    echo "flac-to-tracks: need a .cue and a .flac in the current directory" >&2
+    return 1
+  fi
+  if [ -n "$(_dt_first_match 'split-track*.flac')" ]; then
+    echo "flac-to-tracks: split-track*.flac already present — clean up first" >&2
+    return 1
+  fi
 
-    # If no track number, assume it's a single-track file (e.g., compilation or album track)
-    if [ -z "$track" ]; then
-      track="01"
-    fi
+  echo "Splitting $album using $cuefile ..."
+  cuebreakpoints "$cuefile" | shnsplit -o flac "$album" || return 1
+  # Tag while the names are still predictable, then rename from the tags.
+  cuetag.sh "$cuefile" split-track*.flac || return 1
 
-    # Convert FLAC to ALAC (.m4a) and embed cover art
-    ffmpeg -y -i "$f" -i "$cover_filename" -c:a alac -map 0:a -map 1 -c:v mjpeg -disposition:v attached_pic \
-      -metadata:s:v title="Album cover" -metadata:s:v comment="Cover (front)" \
-      "$(printf "%02d - %s.m4a" "$track" "$title")"
-
-    # Move the original FLAC file to the backup folder
-    mv "$f" backup/
+  _dt_ls_match 'split-track*.flac' | while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    track="$(_dt_track_num "$(_dt_tag "$f" TRACKNUMBER)")"
+    title="$(_dt_safe_name "$(_dt_tag "$f" TITLE)")"
+    [ -n "$title" ] || title="${f%.flac}"
+    newname="$(printf '%02d - %s.flac' "$track" "$title")"
+    [ "$f" = "$newname" ] || mv -- "$f" "$newname"
   done
 
-  # Optionally clean up the backup folder
-  if [ "$cleanup_backup" = true ]; then
-    rm -rf backup
-  fi
-
-  echo "Conversion complete. Original FLAC files are in the 'backup' folder."
-  if [ "$cleanup_backup" = true ]; then
-    echo "Backup folder has been cleaned up."
+  if [ "$keep_source" = true ]; then
+    echo "flac-to-tracks: done. Original kept as $album"
+  else
+    mkdir -p backup
+    mv -- "$album" backup/
+    echo "flac-to-tracks: done. Original moved to backup/"
   fi
 }
+
+# Convert FLAC files in the current directory to ALAC (.m4a) with cover art.
+#
+# Usage: flac-to-alac [--cover FILE] [--cue FILE] [--cleanup]
+#
+#   --cover FILE  cover art to embed (default: folder.jpg)
+#   --cue FILE    force a specific cue sheet
+#   --cleanup     delete ./backup/ afterwards instead of keeping originals
+#
+# If a .cue sheet is present the album is split into tracks first, via
+# flac-to-tracks. Originals are moved to ./backup/.
+#
+# Replaces convert_flac_to_alac and convert_cue_flac_to_alac, which were the
+# same function apart from that splitting step.
+flac-to-alac() {
+  local cover="folder.jpg" cuefile="" cleanup=false split=false
+  local f track title out converted=0
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --cover)
+        [ -n "${2:-}" ] || { echo "flac-to-alac: --cover needs a file" >&2; return 1; }
+        cover="$2"; shift 2 ;;
+      --cue)
+        [ -n "${2:-}" ] || { echo "flac-to-alac: --cue needs a file" >&2; return 1; }
+        cuefile="$2"; shift 2 ;;
+      --cleanup) cleanup=true; shift ;;
+      -h | --help)
+        echo "usage: flac-to-alac [--cover FILE] [--cue FILE] [--cleanup]"; return 0 ;;
+      *) echo "flac-to-alac: unknown option: $1" >&2; return 1 ;;
+    esac
+  done
+
+  _dt_require flac-to-alac ffmpeg metaflac || return 1
+
+  # An album-length FLAC with a cue sheet has to be split before converting.
+  [ -n "$cuefile" ] || cuefile="$(_dt_first_match '*.cue')"
+  if [ -n "$cuefile" ]; then
+    split=true
+    flac-to-tracks --cue "$cuefile" || return 1
+  fi
+
+  if [ -z "$(_dt_first_match '*.flac')" ]; then
+    echo "flac-to-alac: no .flac files in the current directory" >&2
+    return 1
+  fi
+
+  if [ ! -f "$cover" ]; then
+    echo "flac-to-alac: no cover art at '$cover' — converting without artwork"
+  fi
+
+  mkdir -p backup
+  _dt_ls_match '*.flac' | while IFS= read -r f; do
+    [ -n "$f" ] || continue
+
+    track="$(_dt_track_num "$(_dt_tag "$f" TRACKNUMBER)")"
+    title="$(_dt_safe_name "$(_dt_tag "$f" TITLE)")"
+    # A single loose file often has no track number; treat it as track 1.
+    [ "$track" = 0 ] && track=1
+    [ -n "$title" ] || title="${f%.flac}"
+    out="$(printf '%02d - %s.m4a' "$track" "$title")"
+
+    if [ -f "$cover" ]; then
+      ffmpeg -y -loglevel error -i "$f" -i "$cover" \
+        -c:a alac -map 0:a -map 1 -c:v mjpeg -disposition:v attached_pic \
+        -metadata:s:v title="Album cover" -metadata:s:v comment="Cover (front)" \
+        "$out" || continue
+    else
+      ffmpeg -y -loglevel error -i "$f" -c:a alac "$out" || continue
+    fi
+
+    mv -- "$f" backup/
+    echo "  $out"
+  done
+
+  converted="$(_dt_ls_match '*.m4a' | wc -l | tr -d ' ')"
+
+  if [ "$cleanup" = true ]; then
+    rm -rf backup
+    echo "flac-to-alac: $converted track(s) converted. Originals deleted."
+  else
+    echo "flac-to-alac: $converted track(s) converted. Originals in ./backup/"
+  fi
+  [ "$split" = true ] && echo "  (album was split from $cuefile first)"
+  return 0
+}
+
+# ── Back-compat for the previous names ───────────────────────────────────
+alias pdfcomp2pres='pdf-compress'
+alias pdfcomp2res='pdf-compress'
+alias convert_flac_to_alac='flac-to-alac'
+alias convert_cue_flac_to_alac='flac-to-alac'
