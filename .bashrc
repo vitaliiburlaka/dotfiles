@@ -58,5 +58,17 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
-# Miniconda path
-export PATH="/usr/local/miniconda3/bin:$PATH"
+# Homebrew prefix: /opt/homebrew on Apple Silicon, /usr/local on Intel.
+if [ -d /opt/homebrew ]; then
+    export HOMEBREW_PREFIX=/opt/homebrew
+else
+    export HOMEBREW_PREFIX=/usr/local
+fi
+export PATH="$HOMEBREW_PREFIX/bin:$HOMEBREW_PREFIX/sbin:$PATH"
+
+# Miniconda. Installed as a cask, so it lives under Caskroom — the old
+# /usr/local/miniconda3 path here had never existed on this machine.
+CONDA_PREFIX_DIR="$HOMEBREW_PREFIX/Caskroom/miniconda/base"
+if [ -d "$CONDA_PREFIX_DIR/condabin" ]; then
+    export PATH="$CONDA_PREFIX_DIR/condabin:$PATH"
+fi
