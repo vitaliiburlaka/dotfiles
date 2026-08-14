@@ -33,44 +33,51 @@ alias sudo='sudo '
 # Get week number
 alias week='date +%V'
 # weather and the moon
-alias weather='curl -4 http://wttr.in/Niagara+Falls+Ontario'
-alias moon='curl -4 http://wttr.in/Moon'
+alias weather='curl -4 https://wttr.in/Niagara+Falls+Ontario'
+alias moon='curl -4 https://wttr.in/Moon'
 
 # Desktop Apps
-alias xcode="open -a '/Applications/XCode.app'"
-alias safari="open -a safari"
-alias chrome="open -a google\ chrome"
+# `open -a <name>` resolves via LaunchServices, so it keeps working when an
+# app moves and does not depend on the bundle's exact capitalisation.
+alias xcode='open -a Xcode'
+alias safari='open -a Safari'
+alias chrome='open -a "Google Chrome"'
 alias f='open -a Finder '
 alias textedit='open -a TextEdit'
-alias discord="open -a '/Applications/Discord.app'"
-alias opendiff='/Applications/Xcode.app/Contents/Developer/usr/bin/opendiff'
+alias discord='open -a Discord'
 
 # Utils
-alias dsclean='find . -type f -name .DS_Store -print0 | xargs -0 rm'
+# -delete rather than `| xargs -0 rm`, which runs rm with no arguments (and
+# so errors) when there is nothing to delete.
+alias dsclean='find . -type f -name .DS_Store -delete'
 alias encode-file='iconv -f ISO-8859-1 -t UTF-8'
 alias usage='df -h'
 alias space='du -sh ./*'
 alias tu='top -o cpu'
 alias trim="tr -s \" \" | sed 's/^[ ]//g'"
 alias total-files='ls -1 | wc -l | trim'
-alias node-splt-ignore="find . -type d  -path '*node_modules/*' -prune -o -type d -name 'node_modules' -exec touch '{}/.metadata_never_index' \;"
+# Stop Spotlight indexing node_modules
+alias node-spotlight-ignore="find . -type d -path '*node_modules/*' -prune -o -type d -name 'node_modules' -exec touch '{}/.metadata_never_index' \;"
 
 # Editing and reloading shell config
 alias sb="source ~/.bashrc"
-alias eb='vim ~/.bashrc'
+alias eb='${EDITOR:-vim} ~/.bashrc'
 alias sz="source ~/.zshrc"
-alias ez='vim ~/.zshrc'
+alias ez='${EDITOR:-vim} ~/.zshrc'
 
 # Homebrew stuff
-alias bup='brew update && brew upgrade && brew upgrade --cask'
+# `brew upgrade` covers casks too, so the old trailing `brew upgrade --cask`
+# was a no-op second pass.
+alias bup='brew update && brew upgrade && brew cleanup'
 alias bout='brew outdated'
+alias bdump='brew bundle dump --file=~/.dotfiles/Brewfile --force --describe'
 
 # Git stuff
+# Note: gst/gco/gb come from the oh-my-zsh git plugin — do not redefine them
+# here. This file is sourced after oh-my-zsh, so anything defined here wins
+# silently, which is how `gbr` used to shadow omz's `git branch --remote`.
 alias gti="git"
 alias public-key='for k in ~/.ssh/id_ed25519.pub ~/.ssh/id_rsa.pub; do [ -f "$k" ] && pbcopy < "$k" && echo "copied $k to clipboard" && break; done'
-alias gst="git status"
-alias gbr="git branch"
-alias gco="git checkout"
 
 # Docker and K8s
 alias dps="docker ps"
@@ -83,10 +90,14 @@ alias lip="ipconfig getifaddr en0"
 alias ips="ifconfig -a | grep -o 'inet6\? \(addr:\)\?\s\?\(\(\([0-9]\+\.\)\{3\}[0-9]\+\)\|[a-fA-F0-9:]\+\)' | awk '{ sub(/inet6? (addr:)? ?/, \"\"); print }'"
 
 # Show active network interfaces
-alias ifactive="ifconfig | pcregrep -M -o '^[^\t:]+:([^\n]|\n\t)*status: active'"
+# Uses awk rather than pcregrep: pcregrep is only installed here as a
+# transitive dependency and would disappear on the next `brew autoremove`.
+alias ifactive="ifconfig | awk '/^[a-z0-9]+:/{iface=substr(\$1, 1, length(\$1)-1)} /status: active/{print iface}'"
 
 # Flush your DNS cache
-alias flushdns="dscacheutil -flushcache"
+# dscacheutil alone stopped being sufficient years ago; mDNSResponder holds
+# its own cache and must be signalled too.
+alias flushdns="sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder && echo 'DNS cache flushed'"
 
 # Usefull stuff for presentation and seeing dotfiles
 alias hidedesktop="defaults write com.apple.finder CreateDesktop -bool false && killall Finder"
@@ -103,18 +114,24 @@ command -v sha1sum > /dev/null || alias sha1sum="shasum"
 # URL-encode strings
 alias urlencode='python3 -c "import sys, urllib.parse; print(urllib.parse.quote_plus(sys.argv[1]))"'
 
-# Merge PDF files
-# Usage: `mergepdf -o output.pdf input{1,2,3}.pdf`
-alias mergepdf='/System/Library/Automator/Combine\ PDF\ Pages.action/Contents/Resources/join.py'
+# Merging PDFs is now `pdf-merge` in ~/.functions. The old alias pointed at
+# /System/Library/Automator/Combine PDF Pages.action, which Apple removed.
+#
+# The `airport` alias is gone entirely: that binary was deprecated and then
+# removed from Apple80211.framework, and there is no drop-in replacement.
+# Closest equivalents:
+#   system_profiler SPAirPortDataType     current Wi-Fi details
+#   wdutil info                           requires sudo, more detail
 
-# Airport CLI alias
-alias airport='/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport'
+# Sleep the display (when going AFK). The old CGSession path was removed
+# from User.menu.
+alias afk='pmset displaysleepnow'
 
-# Lock the screen (when going AFK)
-alias afk="/System/Library/CoreServices/Menu\ Extras/User.menu/Contents/Resources/CGSession -suspend"
-
-# Print each PATH entry on a separate line
-alias path='echo -e ${PATH//:/\\n}'
+# Print each PATH entry on a separate line.
+# Piped through tr rather than using ${PATH//:/\\n}: zsh does not word-split
+# unquoted expansions, so the substitution approach prints one long line there.
+alias path='printf "%s" "$PATH" | tr ":" "\n"'
 
 # local logs
-alias syslog='tail -n 50 /var/log/system.log'
+# /var/log/system.log is near-empty since macOS moved to unified logging.
+alias syslog='log show --last 30m --style compact'
