@@ -1,0 +1,142 @@
+#!/usr/bin/env bash
+#
+# Take a backup of the current dotfiles state, on demand.
+#
+# Unlike the backup `install` takes, this one copies rather than moves —
+# nothing on the system is changed. Run it before an upgrade, before editing
+# something risky, or just to snapshot a working setup.
+#
+#   ./backup                    snapshot to ~/dotfiles-backup/<stamp>.zip
+#   ./backup --no-zip           leave it as a folder instead of zipping
+#   ./backup --include-secret   also include ~/.secret (see the warning below)
+#   ./backup --output DIR       write somewhere other than ~/dotfiles-backup
+#   ./backup --help
+#
+# What it captures:
+#   - every file this repo manages, resolved through symlinks so the archive
+#     holds real content rather than links into the repo
+#   - unmanaged shell config that exists but is not tracked here
+#   - snapshots of installed Homebrew packages and VS Code extensions, so a
+#     restore can tell what was installed at the time
+#
+# ~/.secret is EXCLUDED by default. It holds API tokens, and a zip sitting in
+# $HOME is easy to copy somewhere less private without thinking. Pass
+# --include-secret to include it; the archive is then chmod 600.
+
+set -euo pipefail
+
+DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKUP_ROOT="$HOME/dotfiles-backup"
+DO_ZIP=true
+INCLUDE_SECRET=false
+COUNT=0
+
+# shellcheck source=lib/archive.sh
+. "$DOTFILES_DIR/lib/archive.sh"
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --no-zip)         DO_ZIP=false ;;
+    --include-secret) INCLUDE_SECRET=true ;;
+    --output)         BACKUP_ROOT="${2:?--output needs a directory}"; shift ;;
+    -h|--help)        sed -n '2,27p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *)                echo "unknown option: $1" >&2; exit 1 ;;
+  esac
+  shift
+done
+
+STAMP="$(archive_new_stamp)"
+BACKUP_DIR="$BACKUP_ROOT/$STAMP"
+
+archive_manifest_header "$BACKUP_DIR" "Manual dotfiles backup from $DOTFILES_DIR"
+
+# copy_in <absolute-path> [note]
+#
+# Copy a path into the backup, keeping its location relative to $HOME so
+# provenance stays obvious and same-named files cannot collide.
+copy_in() {
+  local target="$1" note="${2:-}" rel dir desc
+
+  [ -e "$target" ] || [ -L "$target" ] || return 0
+
+  rel="$(archive_relpath "$target")"
+  dir="$(dirname "$rel")"
+  [ "$dir" = "." ] && dir=""
+
+  desc="$(archive_describe "$target")"
+  [ -n "$note" ] && desc="$desc — $note"
+
+  mkdir -p "$BACKUP_DIR${dir:+/$dir}"
+  # -L resolves symlinks so the archive holds real content. A link into this
+  # repo would otherwise back up as a pointer that says nothing about what it
+  # contained at the time.
+  cp -RL "$target" "$BACKUP_DIR${dir:+/$dir}/" 2>/dev/null \
+    || cp -R "$target" "$BACKUP_DIR${dir:+/$dir}/"
+
+  archive_manifest_add "$BACKUP_DIR" "$rel" "$desc"
+  COUNT=$((COUNT + 1))
+  echo "  saved  $(short "$target")"
+}
+
+echo "Backing up dotfiles..."
+
+# Everything this repo manages.
+while IFS='|' read -r _src dest; do
+  [ -n "$dest" ] && copy_in "$dest"
+done <<< "$(managed_pairs)"
+
+# Shell config that exists but this repo does not manage — the pieces most
+# likely to be lost, precisely because nothing else is tracking them.
+for extra in \
+  "$HOME/.zprofile" \
+  "$HOME/.zshenv" \
+  "$HOME/.profile" \
+  "$HOME/.inputrc" \
+  "$HOME/.editorconfig" \
+  "$HOME/.ssh/config" \
+  "$HOME/.config/git/ignore"
+do
+  copy_in "$extra" "not managed by this repo"
+done
+
+if [ "$INCLUDE_SECRET" = true ]; then
+  copy_in "$HOME/.secret" "CONTAINS SECRETS"
+else
+  [ -e "$HOME/.secret" ] && echo "  skip   ~/.secret (pass --include-secret to include)"
+fi
+
+# ── Environment snapshots ────────────────────────────────────────────────
+# Regenerable, but only if you still have the machine. Recording them makes a
+# restore able to answer "what was installed at the time".
+snapshot() {
+  local name="$1"; shift
+  "$@" > "$BACKUP_DIR/snapshots/$name" 2>/dev/null || true
+  # Drop empty results rather than recording them. A zero-byte
+  # vscode-extensions.txt reads as "nothing was installed", which is a worse
+  # answer than no file at all.
+  if [ ! -s "$BACKUP_DIR/snapshots/$name" ]; then
+    rm -f "$BACKUP_DIR/snapshots/$name"
+    return 0
+  fi
+  archive_manifest_add "$BACKUP_DIR" "snapshots/$name" "generated snapshot"
+  COUNT=$((COUNT + 1))
+  echo "  snap   $name"
+}
+
+mkdir -p "$BACKUP_DIR/snapshots"
+command -v brew > /dev/null 2>&1 && {
+  snapshot "brew-leaves.txt"     brew leaves --installed-on-request
+  snapshot "brew-casks.txt"      brew list --cask
+}
+command -v code > /dev/null 2>&1 && snapshot "vscode-extensions.txt" code --list-extensions
+snapshot "dotfiles-commit.txt" git -C "$DOTFILES_DIR" log -1 --format=%H%n%s
+rmdir "$BACKUP_DIR/snapshots" 2>/dev/null || true
+
+echo
+archive_finalize "$BACKUP_DIR" "$STAMP" "$COUNT" "$DO_ZIP"
+
+if [ "$INCLUDE_SECRET" = true ]; then
+  chmod 600 "$BACKUP_ROOT/dotfiles-backup-$STAMP.zip" 2>/dev/null || true
+  chmod -R go-rwx "$BACKUP_DIR" 2>/dev/null || true
+  echo "  (archive is chmod 600 — it contains ~/.secret)"
+fi

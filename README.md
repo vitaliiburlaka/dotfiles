@@ -55,6 +55,32 @@ To restore a single file:
     unzip -p ~/dotfiles-backup/dotfiles-backup-20260814-101500.zip \
       '*/.zshrc' > ~/.zshrc
 
+### Backing up on demand
+
+`./backup` takes the same kind of archive whenever you want one. Unlike the
+backup `install` takes, it **copies** — nothing on the system is moved or
+changed:
+
+    ./backup                    snapshot to ~/dotfiles-backup/<stamp>.zip
+    ./backup --no-zip           leave it as a folder
+    ./backup --include-secret   also include ~/.secret
+    ./backup --output DIR       write somewhere else
+    ./backup --help
+
+It captures every file this repo manages (resolved through the symlinks, so
+the archive holds real content rather than pointers back into the repo),
+unmanaged shell config that exists but is not tracked here — `.zprofile`,
+`.zshenv`, `.profile`, `.inputrc`, `.editorconfig`, `~/.ssh/config`,
+`~/.config/git/ignore` — and snapshots of the installed Homebrew packages,
+VS Code extensions, and the dotfiles commit it ran from.
+
+`~/.secret` is **excluded by default**, since it holds API tokens and an
+archive in `$HOME` is easy to copy somewhere less private without thinking.
+With `--include-secret` the archive is written `chmod 600`.
+
+`install` and `backup` share `lib/archive.sh`, so both write the same format
+and agree on which files are managed.
+
 ## What goes where
 
 | Repo file                            | Linked to                                                  |
