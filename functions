@@ -1,0 +1,131 @@
+convert_cue_flac_to_alac() {
+  # Default cover art filename
+  cover_filename="folder.jpg"
+  cleanup_backup=false
+
+  # Parse optional flags
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -cleanupBackup)
+        cleanup_backup=true
+        shift
+        ;;
+      -coverFileName)
+        cover_filename="$2"
+        shift 2
+        ;;
+      *)
+        echo "Unknown flag: $1"
+        return 1
+        ;;
+    esac
+  done
+
+  # Find the .cue and .flac files in the current directory
+  cuefile=$(find . -type f -name "*.cue" | head -n 1)
+  flacfile=$(find . -type f -name "*.flac" | head -n 1)
+
+  # Check if the .cue and .flac files exist
+  if [ -z "$cuefile" ] || [ -z "$flacfile" ]; then
+    echo "Error: .cue or .flac file not found."
+    return 1
+  fi
+
+  # Split the FLAC file using the .cue file
+  cuebreakpoints "$cuefile" | shnsplit -o flac "$flacfile"
+
+  # Apply metadata from the .cue file to the split FLAC tracks
+  cuetag.sh "$cuefile" split-track*.flac
+
+  # Create a backup directory to store original FLAC files
+  mkdir -p backup
+
+  # Process each split track
+  for f in split-track*.flac; do
+    # Extract track metadata
+    title=$(metaflac --show-tag=TITLE "$f" | cut -d= -f2)
+    track=$(metaflac --show-tag=TRACKNUMBER "$f" | cut -d= -f2)
+
+    # Convert FLAC to ALAC (.m4a) and embed cover art
+    ffmpeg -y -i "$f" -i "$cover_filename" -c:a alac -map 0:a -map 1 -c:v mjpeg -disposition:v attached_pic \
+      -metadata:s:v title="Album cover" -metadata:s:v comment="Cover (front)" \
+      "$(printf "%02d - %s.m4a" "$track" "$title")"
+
+    # Move the original FLAC file to the backup folder
+    mv "$f" backup/
+  done
+
+  # Optionally clean up the backup folder
+  if [ "$cleanup_backup" = true ]; then
+    rm -rf backup
+  fi
+
+  echo "Conversion complete. Original FLAC files are in the 'backup' folder."
+  if [ "$cleanup_backup" = true ]; then
+    echo "Backup folder has been cleaned up."
+  fi
+}
+
+
+
+convert_flac_to_alac() {
+  # Default cover art filename
+  cover_filename="folder.jpg"
+  cleanup_backup=false
+
+  # Parse optional flags
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -cleanupBackup)
+        cleanup_backup=true
+        shift
+        ;;
+      -coverFileName)
+        cover_filename="$2"
+        shift 2
+        ;;
+      *)
+        echo "Unknown flag: $1"
+        return 1
+        ;;
+    esac
+  done
+
+  # Create a backup directory to store original FLAC files
+  mkdir -p backup
+
+  # Process each FLAC file in the directory
+  for f in *.flac; do
+    # Skip non-FLAC files
+    if [[ ! -f "$f" ]]; then
+      continue
+    fi
+
+    # Extract track metadata
+    title=$(metaflac --show-tag=TITLE "$f" | cut -d= -f2)
+    track=$(metaflac --show-tag=TRACKNUMBER "$f" | cut -d= -f2)
+
+    # If no track number, assume it's a single-track file (e.g., compilation or album track)
+    if [ -z "$track" ]; then
+      track="01"
+    fi
+
+    # Convert FLAC to ALAC (.m4a) and embed cover art
+    ffmpeg -y -i "$f" -i "$cover_filename" -c:a alac -map 0:a -map 1 -c:v mjpeg -disposition:v attached_pic \
+      -metadata:s:v title="Album cover" -metadata:s:v comment="Cover (front)" \
+      "$(printf "%02d - %s.m4a" "$track" "$title")"
+
+    # Move the original FLAC file to the backup folder
+    mv "$f" backup/
+  done
+
+  # Optionally clean up the backup folder
+  if [ "$cleanup_backup" = true ]; then
+    rm -rf backup
+  fi
+
+  echo "Conversion complete. Original FLAC files are in the 'backup' folder."
+  if [ "$cleanup_backup" = true ]; then
+    echo "Backup folder has been cleaned up."
+  fi
+}

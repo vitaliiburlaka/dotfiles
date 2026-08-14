@@ -100,7 +100,7 @@ source $ZSH/oh-my-zsh.sh
 # fi
 
 # Compilation flags
-# export ARCHFLAGS="-arch x86_64"
+# export ARCHFLAGS="-arch $(uname -m)"
 
 # ssh
 # export SSH_KEY_PATH="~/.ssh/rsa_id"
@@ -121,6 +121,11 @@ if [ -f /usr/local/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]; 
 fi
 
 # Functions
+# Source functions
+if [ -f ~/.functions ]; then
+  source ~/.functions
+fi
+
 # Usage: pdfcomp2pres [input file] [output file] [screen*|ebook|printer|prepress]
 #/screen selects low-resolution output similar to the Acrobat Distiller "Screen Optimized" setting. (72 dpi)
 #/ebook selects medium-resolution output similar to the Acrobat Distiller "eBook" setting. (150 dpi)
@@ -155,3 +160,10 @@ unset __conda_setup
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+export GPG_TTY=$(tty)
+gpgconf --launch gpg-agent
+
+export VK_ICD_FILENAMES=/usr/local/share/vulkan/icd.d/MoltenVK_icd.json
+
+export PATH="$HOME/.local/bin:$PATH"

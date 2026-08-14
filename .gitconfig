@@ -8,4 +8,10 @@
 	st = status
 	unstage = reset HEAD --
 	last = log -1 HEAD
-	poh = push orign HEAD
+	poh = push origin HEAD
+[credential "https://github.com"]
+	helper = 
+	helper = !/usr/local/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper = 
+	helper = !/usr/local/bin/gh auth git-credential
