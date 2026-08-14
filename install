@@ -56,9 +56,28 @@ echo $'linking .npmrc\n'
 ln -s $DOTFILES_DIR/.npmrc ~/.npmrc
 
 
-bash $DOTFILES_DIR/brew.sh
-# bash $DOTFILES_DIR/vim.sh
-# bash $DOTFILES_DIR/mac.sh
-bash $DOTFILES_DIR/node.sh
-bash $DOTFILES_DIR/cask.sh
+# Formulae, casks and taps (replaces the old brew.sh / cask.sh)
+if command -v brew > /dev/null 2>&1; then
+  brew bundle --file="$DOTFILES_DIR/Brewfile"
+else
+  echo "Homebrew not found. Install it from https://brew.sh, then re-run."
+fi
+
+# node, via nvm's official installer (replaces the old node.sh, which
+# pointed at creationix/nvm — that repo moved to nvm-sh years ago)
+if [ ! -d "$HOME/.nvm" ]; then
+  curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.2/install.sh | bash
+  export NVM_DIR="$HOME/.nvm"
+  # shellcheck disable=SC1091
+  [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+  nvm install --lts
+  nvm alias default node
+fi
+
+# Visual Studio Code settings (previously done inside cask.sh)
+VSCODE_USER_DIR="$HOME/Library/Application Support/Code/User"
+if [ -d "$VSCODE_USER_DIR" ]; then
+  ln -sfn "$DOTFILES_DIR/vscode-settings.json" "$VSCODE_USER_DIR/settings.json"
+fi
+
 bash $DOTFILES_DIR/code.sh
