@@ -24,11 +24,36 @@ Or, with only `curl` available:
     bash -c "`curl -fsSL https://raw.githubusercontent.com/vitaliiburlaka/dotfiles/master/remote-install.sh`"
 
 `install` is safe to run repeatedly. It reports `ok` for links that are
-already correct, and moves any real file that is in the way into
-`~/dotfiles-backup/<timestamp>/` before replacing it. To create the symlinks
-without touching Homebrew, nvm or VS Code:
+already correct, and never touches anything else without backing it up first.
 
-    ./install --link-only
+    ./install --link-only   just the symlinks, skip Homebrew / nvm / VS Code
+    ./install --no-zip      leave the backup as a folder instead of zipping
+    ./install --help
+
+## Backups
+
+Anything already sitting at a target path — a real file, a directory, or a
+symlink pointing somewhere other than this repo — is moved into a
+timestamped, versioned backup before being replaced:
+
+    ~/dotfiles-backup/dotfiles-backup-20260814-101500.zip   (default)
+    ~/dotfiles-backup/20260814-101500/                      (with --no-zip)
+
+Files keep their path relative to `$HOME`, so
+`~/Library/Application Support/Code/User/settings.json` is stored under that
+same path inside the archive rather than as a bare `settings.json`. Each
+backup carries a `MANIFEST.txt` listing what was taken, whether it was a file
+or a symlink (and where that symlink pointed), and how to restore it.
+
+Symlinks are archived as symlinks, so a link into another dotfiles setup
+comes back as a link rather than a copy of its target. Nothing is written
+when there is nothing to back up, so re-running leaves no empty artifacts.
+The zip is verified before the folder it came from is removed.
+
+To restore a single file:
+
+    unzip -p ~/dotfiles-backup/dotfiles-backup-20260814-101500.zip \
+      '*/.zshrc' > ~/.zshrc
 
 ## What goes where
 
