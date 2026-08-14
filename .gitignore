@@ -1,2 +1,15 @@
 # macOS
 .DS_Store
+
+# Never commit credentials. ~/.secret is sourced by .zshrc but must stay
+# outside version control; these patterns are belt-and-braces in case a
+# copy ever lands inside the repo.
+.secret
+.env
+.env.*
+*.local
+.netrc
+
+# Tool-local state
+.claude/settings.local.json
+dotfiles-backup/
