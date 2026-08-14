@@ -44,8 +44,9 @@ ZSH_THEME="robbyrussell"
 # Case-sensitive completion must be off. _ and - will be interchangeable.
 # HYPHEN_INSENSITIVE="true"
 
-# Uncomment the following line to disable bi-weekly auto-update checks.
-# DISABLE_AUTO_UPDATE="true"
+# Auto-update checks cost ~180ms of every single shell start, and stall on
+# the network. Update deliberately instead, with `omz update`.
+zstyle ':omz:update' mode disabled
 
 # Uncomment the following line to change how often to auto-update (in days).
 # export UPDATE_ZSH_DAYS=13
@@ -83,6 +84,9 @@ HIST_STAMPS="yyyy-mm-dd"
 # Custom plugins may be added to ~/.oh-my-zsh/custom/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
+# Note: no `nvm` plugin here on purpose. It sources nvm.sh eagerly and always
+# loads nvm's bash completion, which together cost ~1.9s. See the lazy nvm
+# setup near the bottom of this file.
 plugins=(
   git
   brew
@@ -90,7 +94,6 @@ plugins=(
   node
   npm
   yarn
-  nvm
   python
 )
 
@@ -140,40 +143,57 @@ if [ -f ~/.functions ]; then
   source ~/.functions
 fi
 
-# Usage: pdfcomp2pres [input file] [output file] [screen*|ebook|printer|prepress]
-#/screen selects low-resolution output similar to the Acrobat Distiller "Screen Optimized" setting. (72 dpi)
-#/ebook selects medium-resolution output similar to the Acrobat Distiller "eBook" setting. (150 dpi)
-#/printer selects output similar to the Acrobat Distiller "Print Optimized" setting. (300 dpi)
-#/prepress selects output similar to Acrobat Distiller "Prepress Optimized" setting. (300 dpi)
-#/default selects output intended to be useful across a wide variety of uses, possibly at the expense of a larger output file. (72 dpi)
-pdfcomp2pres() {
-    gs -sDEVICE=pdfwrite -dNOPAUSE -dQUIET -dBATCH -dPDFSETTINGS=/${3:-"screen"} -dCompatibilityLevel=1.4 -sOutputFile="$2" "$1"
-}
-
-# Usage: pdfcomp2res [input file] [output file] [resolution in DPI] default is 200 dpi
-pdfcomp2res() {
-    gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dDownsampleColorImages=true -dDownsampleGrayImages=true -dDownsampleMonoImages=true -dColorImageResolution=${3:-"200"} -dGrayImageResolution=${3:-"200"} -dMonoImageResolution=${3:-"200"} -r${3:-"200"} -dNOPAUSE  -dBATCH -sOutputFile="$2" "$1"
-}
-
-# >>> conda initialize >>>
-# !! Contents within this block are managed by 'conda init' !!
-__conda_setup="$('/usr/local/Caskroom/miniconda/base/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
-if [ $? -eq 0 ]; then
+# conda (lazy)
+# The stock `conda init` block runs `conda shell.zsh hook`, which spawns
+# Python and costs ~0.7s on every shell. Defer it: the first `conda` call
+# replaces this stub with the real thing.
+export CONDA_PREFIX_DIR="/usr/local/Caskroom/miniconda/base"
+conda() {
+  unfunction conda
+  local __conda_setup
+  if __conda_setup="$("$CONDA_PREFIX_DIR/bin/conda" shell.zsh hook 2>/dev/null)"; then
     eval "$__conda_setup"
-else
-    if [ -f "/usr/local/Caskroom/miniconda/base/etc/profile.d/conda.sh" ]; then
-        . "/usr/local/Caskroom/miniconda/base/etc/profile.d/conda.sh"
-    else
-        export PATH="/usr/local/Caskroom/miniconda/base/bin:$PATH"
-    fi
-fi
-unset __conda_setup
-# <<< conda initialize <<<
+  elif [ -f "$CONDA_PREFIX_DIR/etc/profile.d/conda.sh" ]; then
+    . "$CONDA_PREFIX_DIR/etc/profile.d/conda.sh"
+  else
+    path=("$CONDA_PREFIX_DIR/bin" $path)
+  fi
+  conda "$@"
+}
 
-
+# nvm (lazy)
+# Sourcing nvm.sh costs ~0.7s, and its bash completion another ~0.66s. Neither
+# is needed just to run node: put the default version's bin on PATH directly
+# (a glob, not a subprocess) and load nvm proper only when it is called.
 export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+() {
+  local alias_file="$NVM_DIR/alias/default" want bin
+  local -a versions
+  [[ -r $alias_file ]] && want="$(<$alias_file)"
+  for bin in "$NVM_DIR/versions/node/$want/bin" "$NVM_DIR/versions/node/v$want/bin"; do
+    if [[ -d $bin ]]; then
+      path=("$bin" $path)
+      return
+    fi
+  done
+  # Aliases like "node", "stable" or "lts/*" need nvm itself to resolve;
+  # approximate with the highest installed version (numeric glob sort).
+  versions=("$NVM_DIR"/versions/node/*(/Nn))
+  (( $#versions )) && path=("${versions[-1]}/bin" $path)
+}
 
+nvm() {
+  unfunction nvm
+  [[ -s "$NVM_DIR/nvm.sh" ]] && source "$NVM_DIR/nvm.sh"
+  if [[ -s "$NVM_DIR/bash_completion" ]]; then
+    autoload -U +X bashcompinit && bashcompinit
+    # Bypass the compinit call inside nvm's bash completion script.
+    ZSH_VERSION= source "$NVM_DIR/bash_completion"
+  fi
+  nvm "$@"
+}
+
+# GPG_TTY is required for pinentry. The agent does not need an explicit
+# launch — gpg and git start it on demand via its socket — and doing so here
+# cost ~1.4s per shell.
 export GPG_TTY=$(tty)
-gpgconf --launch gpg-agent
