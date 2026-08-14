@@ -101,6 +101,40 @@ Packages come from the `Brewfile` (`brew bundle`), VS Code extensions from
 **Preferences → General → Preferences → Load preferences from a custom
 folder**, pointed at this repo.
 
+## Commands
+
+Defined in `functions` (linked as `~/.functions`). All take `--help`.
+
+    pdf-compress <in.pdf> <out.pdf> [quality]
+
+Compress a PDF. `quality` is either a ghostscript preset — `screen`
+(default), `ebook`, `printer`, `prepress`, `default` — or a number, which is
+taken as a target DPI and downsamples every image to it.
+
+    pdf-merge <out.pdf> <in.pdf>...
+
+Concatenate PDFs.
+
+    flac-to-tracks [--cue FILE] [--keep-source]
+
+Split one album-length FLAC into per-track FLACs using its cue sheet, tag
+each track from the cue, and name them `NN - Title.flac`. The original moves
+to `./backup/`.
+
+    flac-to-alac [--cover FILE] [--cue FILE] [--cleanup]
+
+Convert FLACs in the current directory to ALAC `.m4a` with embedded cover
+art (default `folder.jpg`, skipped if absent). If a cue sheet is present the
+album is split with `flac-to-tracks` first. Originals move to `./backup/`,
+which `--cleanup` deletes.
+
+The previous names — `pdfcomp2pres`, `pdfcomp2res`, `convert_flac_to_alac`,
+`convert_cue_flac_to_alac` — still work as aliases.
+
+Note that `.aliases` is sourced *after* oh-my-zsh, so anything defined there
+overrides a plugin's alias of the same name. Check with `alias <name>` before
+adding one; `gst`, `gco` and `gb` already come from the omz `git` plugin.
+
 ## Secrets
 
 Nothing secret lives in this repo. `.zshrc` sources `~/.secret` first, before

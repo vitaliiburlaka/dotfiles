@@ -67,6 +67,12 @@ _dt_safe_name() { printf '%s' "$1" | tr '/:' '--'; }
 # Replaces pdfcomp2pres (preset) and pdfcomp2res (DPI), which were the same
 # ghostscript call with a different quality knob.
 pdf-compress() {
+  case "${1:-}" in
+    -h | --help)
+      echo "usage: pdf-compress <input.pdf> <output.pdf> [screen|ebook|printer|prepress|default|DPI]"
+      return 0 ;;
+  esac
+
   local input="$1" output="$2" quality="${3:-screen}"
 
   if [ $# -lt 2 ]; then
@@ -117,6 +123,12 @@ pdf-compress() {
 # Replaces the old `mergepdf` alias, which pointed at an Automator action
 # Apple has since removed from macOS.
 pdf-merge() {
+  case "${1:-}" in
+    -h | --help)
+      echo "usage: pdf-merge <output.pdf> <input.pdf> <input.pdf>..."
+      return 0 ;;
+  esac
+
   local output="$1"
 
   if [ $# -lt 3 ]; then
