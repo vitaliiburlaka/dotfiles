@@ -1,71 +1,107 @@
-# get current location
-DOTFILES_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
-
-BACKUP_DIR=dotfiles-backup
-
-echo "running from $DOTFILES_DIR..."
-
-# **********************************
-# GIT
+#!/usr/bin/env bash
 #
-
-# backup ~/.gitconfig
-if [ -f ~/.gitconfig ]; then
-  echo "found old ~/.gitconfig - backing up to $BACKUP_DIR..."
-  mkdir $BACKUP_DIR
-  mv ~/.gitconfig $BACKUP_DIR/.gitconfig
-fi
-
-# link ~/.gitconfig
-echo "sym linking new ~/.gitconfig with $DOTFILES_DIR/.gitconfig!\n"
-ln -s $DOTFILES_DIR/.gitconfig ~/.gitconfig
-
-# *********************************
-# zsh
+# Install these dotfiles by symlinking them into $HOME.
 #
-if [ -L ~/.zshrc ]; then
-  echo "found .zshrc - backing up to $BACKUP_DIR..."
-  mv ~/.zshrc $BACKUP_DIR/.zshrc
-fi
-
-echo $'linking .zshrc\n'
-ln -s $DOTFILES_DIR/.zshrc ~/.zshrc
-
-
-
-if [ -f ~/.aliases ]; then
-  echo "found old .aliases - backing up to $BACKUP_DIR..."
-  mv ~/.aliases $BACKUP_DIR/.aliases
-fi
-
-echo $'linking .aliases\n'
-ln -s $DOTFILES_DIR/.aliases ~/.aliases
-
-
-
-
-# *************************************
-# npm
+# Safe to run repeatedly: every link is created with `ln -sfn`, and any real
+# file already sitting at a target path is moved into a timestamped backup
+# directory first. Re-running is a no-op apart from refreshing the links.
 #
-if [ -L ~/.npmrc ]; then
-  echo "found old .npmrc - removing..."
-  rm ~/.npmrc
+#   ./install            link everything, then run brew bundle / nvm / code
+#   ./install --link-only  only create the symlinks, skip package installs
+
+set -euo pipefail
+
+DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKUP_DIR="$HOME/dotfiles-backup/$(date +%Y%m%d-%H%M%S)"
+LINK_ONLY=false
+
+[ "${1:-}" = "--link-only" ] && LINK_ONLY=true
+
+echo "running from $DOTFILES_DIR"
+
+# Render a path with $HOME collapsed to ~, for readable output.
+short() { printf '%s' "~${1#"$HOME"}"; }
+
+# link_file <source-relative-to-repo> <absolute-target>
+#
+# Skips work if the correct link already exists, backs up anything real that
+# is in the way, and creates parent directories as needed.
+link_file() {
+  local src="$DOTFILES_DIR/$1" dest="$2"
+
+  if [ ! -e "$src" ]; then
+    echo "  skip   $1 (not in repo)"
+    return
+  fi
+
+  # Already pointing where we want it.
+  if [ -L "$dest" ] && [ "$(readlink "$dest")" = "$src" ]; then
+    echo "  ok     $(short "$dest")"
+    return
+  fi
+
+  # Something real is in the way — preserve it before overwriting.
+  if [ -e "$dest" ] && [ ! -L "$dest" ]; then
+    mkdir -p "$BACKUP_DIR"
+    mv "$dest" "$BACKUP_DIR/"
+    echo "  backup $(short "$dest") -> $(short "$BACKUP_DIR")/"
+  fi
+
+  mkdir -p "$(dirname "$dest")"
+  ln -sfn "$src" "$dest"
+  echo "  link   $(short "$dest") -> $1"
+}
+
+echo
+echo "Linking dotfiles..."
+link_file .zshrc        "$HOME/.zshrc"
+link_file .bashrc       "$HOME/.bashrc"
+link_file .bash_profile "$HOME/.bash_profile"
+link_file .aliases      "$HOME/.aliases"
+link_file functions     "$HOME/.functions"
+link_file .gitconfig    "$HOME/.gitconfig"
+link_file .npmrc        "$HOME/.npmrc"
+
+# Editor config lives outside $HOME's top level.
+link_file vscode-settings.json \
+  "$HOME/Library/Application Support/Code/User/settings.json"
+# Sublime Text 4 dropped the version suffix from its support directory; link
+# whichever layout this machine actually has, rather than creating a stray
+# directory for a version that is not installed.
+for st_dir in "Sublime Text" "Sublime Text 3"; do
+  if [ -d "$HOME/Library/Application Support/$st_dir" ]; then
+    link_file sublime/Preferences.sublime-settings \
+      "$HOME/Library/Application Support/$st_dir/Packages/User/Preferences.sublime-settings"
+  fi
+done
+
+# ~/.secret is sourced by .zshrc but is deliberately NOT in this repo. Create
+# an empty one so a fresh machine has somewhere to put tokens.
+if [ ! -e "$HOME/.secret" ]; then
+  touch "$HOME/.secret"
+  chmod 600 "$HOME/.secret"
+  echo "  create ~/.secret (empty; put API tokens here, never in the repo)"
 fi
 
-echo $'linking .npmrc\n'
-ln -s $DOTFILES_DIR/.npmrc ~/.npmrc
+if [ "$LINK_ONLY" = true ]; then
+  echo
+  echo "Done (--link-only)."
+  exit 0
+fi
 
-
-# Formulae, casks and taps (replaces the old brew.sh / cask.sh)
+# ── Packages ─────────────────────────────────────────────────────────────
+echo
+echo "Installing packages..."
 if command -v brew > /dev/null 2>&1; then
   brew bundle --file="$DOTFILES_DIR/Brewfile"
 else
-  echo "Homebrew not found. Install it from https://brew.sh, then re-run."
+  echo "  Homebrew not found. Install it from https://brew.sh, then re-run."
 fi
 
-# node, via nvm's official installer (replaces the old node.sh, which
-# pointed at creationix/nvm — that repo moved to nvm-sh years ago)
+# node, via nvm's official installer
 if [ ! -d "$HOME/.nvm" ]; then
+  echo
+  echo "Installing nvm and the latest LTS node..."
   curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.2/install.sh | bash
   export NVM_DIR="$HOME/.nvm"
   # shellcheck disable=SC1091
@@ -74,10 +110,15 @@ if [ ! -d "$HOME/.nvm" ]; then
   nvm alias default node
 fi
 
-# Visual Studio Code settings (previously done inside cask.sh)
-VSCODE_USER_DIR="$HOME/Library/Application Support/Code/User"
-if [ -d "$VSCODE_USER_DIR" ]; then
-  ln -sfn "$DOTFILES_DIR/vscode-settings.json" "$VSCODE_USER_DIR/settings.json"
+# VS Code extensions
+if command -v code > /dev/null 2>&1; then
+  echo
+  echo "Installing VS Code extensions..."
+  bash "$DOTFILES_DIR/code.sh"
+else
+  echo "  \`code\` not on PATH; skipping extensions."
+  echo "  Enable it in VS Code: Shell Command: Install 'code' command in PATH."
 fi
 
-bash $DOTFILES_DIR/code.sh
+echo
+echo "Done. Restart your shell, or run: exec zsh"
