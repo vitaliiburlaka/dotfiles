@@ -77,6 +77,8 @@
     },
   },
   "security.workspace.trust.untrustedFiles": "open",
+  // Machine-specific: VS Code settings have no shell expansion, so this
+  // absolute path needs updating on an Apple Silicon Mac (/opt/homebrew).
   "python.defaultInterpreterPath": "/usr/local/bin/python3",
   "claudeCode.preferredLocation": "panel"
 }

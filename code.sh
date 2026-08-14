@@ -1,84 +1,100 @@
-# Editor ==========
-# https://marketplace.visualstudio.com/items?itemName=EditorConfig.EditorConfig
-code --install-extension EditorConfig.EditorConfig
+#!/usr/bin/env bash
+#
+# Install VS Code extensions.
+#
+# Regenerate this list from the current machine with:
+#   code --list-extensions
+#
+# Run via `./install`, or directly with `bash code.sh`.
 
-# https://marketplace.visualstudio.com/items?itemName=formulahendry.auto-rename-tag
-code --install-extension formulahendry.auto-rename-tag
+set -uo pipefail
 
-# https://marketplace.visualstudio.com/items?itemName=formulahendry.auto-close-tag
-code --install-extension formulahendry.auto-close-tag
+if ! command -v code > /dev/null 2>&1; then
+  echo "\`code\` is not on PATH."
+  echo "In VS Code, run: Shell Command: Install 'code' command in PATH"
+  exit 1
+fi
 
-# https://marketplace.visualstudio.com/items?itemName=CoenraadS.bracket-pair-colorizer-2
-code --install-extension CoenraadS.bracket-pair-colorizer-2
+extensions=(
+  # Editor
+  editorconfig.editorconfig
+  formulahendry.auto-close-tag
+  aaron-bond.better-comments
+  mikestead.dotenv
+  streetsidesoftware.code-spell-checker
+  alefragnani.project-manager
+  pnp.polacode                            # code screenshots
 
-# https://marketplace.visualstudio.com/items?itemName=aaron-bond.better-comments
-code --install-extension aaron-bond.better-comments
+  # JavaScript / TypeScript
+  dbaeumer.vscode-eslint
+  esbenp.prettier-vscode
+  mgmcdermott.vscode-language-babel
+  andys8.jest-snippets
+  pflannery.vscode-versionlens
+  jpoissonnier.vscode-styled-components
 
-# https://marketplace.visualstudio.com/items?itemName=mikestead.dotenv
-code --install-extension mikestead.dotenv
+  # Python
+  ms-python.python
+  ms-python.vscode-pylance
+  ms-python.debugpy
+  ms-python.isort
+  ms-python.vscode-python-envs
 
+  # Jupyter
+  ms-toolsai.jupyter
+  ms-toolsai.jupyter-keymap
+  ms-toolsai.jupyter-renderers
+  ms-toolsai.vscode-jupyter-cell-tags
+  ms-toolsai.vscode-jupyter-slideshow
 
-# JavaScript ==========
-# https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint
-code --install-extension dbaeumer.vscode-eslint
+  # Go
+  golang.go
 
-# https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode
-code --install-extension esbenp.prettier-vscode
+  # Swift / C++
+  swiftlang.swift-vscode
+  llvm-vs-code-extensions.lldb-dap
+  theqtcompany.qt-core
 
-# https://marketplace.visualstudio.com/items?itemName=mgmcdermott.vscode-language-babel
-code --install-extension mgmcdermott.vscode-language-babel
+  # GraphQL
+  apollographql.vscode-apollo
+  graphql.vscode-graphql
+  graphql.vscode-graphql-syntax
 
-# https://marketplace.visualstudio.com/items?itemName=andys8.jest-snippets
-code --install-extension andys8.jest-snippets
+  # Git / GitHub
+  github.vscode-pull-request-github
+  github.vscode-github-actions
 
-# https://marketplace.visualstudio.com/items?itemName=pflannery.vscode-versionlens
-code --install-extension pflannery.vscode-versionlens
+  # Containers
+  ms-azuretools.vscode-docker
+  ms-azuretools.vscode-containers
+  ms-vscode-remote.remote-containers
 
-# https://marketplace.visualstudio.com/items?itemName=msjsdiag.debugger-for-chrome
-code --install-extension msjsdiag.debugger-for-chrome
+  # AI assistants
+  anthropic.claude-code
+  openai.chatgpt
+  ms-vscode.vscode-copilot-vision
 
-# https://marketplace.visualstudio.com/items?itemName=jpoissonnier.vscode-styled-components
-code --install-extension jpoissonnier.vscode-styled-components
+  # Collaboration
+  ms-vsliveshare.vsliveshare-pack
 
+  # Themes and icons
+  mhartington.oceanic-next
+  zhuangtongfa.material-theme
+  anotherglitchinthematrix.monochrome
+  pawelgrzybek.gatito-theme
+  yummygum.city-lights-theme
+  vscode-icons-team.vscode-icons
+)
 
-# Python ==========
-# https://marketplace.visualstudio.com/items?itemName=ms-python.python
-code --install-extension ms-python.python
+for ext in "${extensions[@]}"; do
+  code --install-extension "$ext" --force
+done
 
-
-# GraphQL ==========
-# https://marketplace.visualstudio.com/items?itemName=apollographql.vscode-apollo
-code --install-extension apollographql.vscode-apollo
-
-# https://marketplace.visualstudio.com/items?itemName=Prisma.vscode-graphql
-code --install-extension Prisma.vscode-graphql
-
-
-# Git ==========
-# https://marketplace.visualstudio.com/items?itemName=eamodio.gitlens
-code --install-extension eamodio.gitlens
-
-
-# Themes ==========
-# https://marketplace.visualstudio.com/items?itemName=mhartington.Oceanic-Next
-code --install-extension mhartington.Oceanic-Next
-
-
-# Docker ==========
-# https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-docker
-code --install-extension ms-azuretools.vscode-docker
-
-
-# Other ==========
-# https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker
-code --install-extension streetsidesoftware.code-spell-checker
-
-# Nice Code Screensots
-# https://marketplace.visualstudio.com/items?itemName=pnp.polacode
-code --install-extension pnp.polacode
-
-# https://marketplace.visualstudio.com/items?itemName=alefragnani.project-manager
-code --install-extension alefragnani.project-manager
-
-# https://marketplace.visualstudio.com/items?itemName=VisualStudioExptTeam.vscodeintellicode
-code --install-extension VisualStudioExptTeam.vscodeintellicode
+# Removed from this list, and why:
+#   CoenraadS.bracket-pair-colorizer-2  built into VS Code; see
+#                                       editor.bracketPairColorization.enabled
+#   msjsdiag.debugger-for-chrome        folded into the built-in JS debugger
+#   Prisma.vscode-graphql               republished as graphql.vscode-graphql
+#   eamodio.gitlens                     no longer installed
+#   formulahendry.auto-rename-tag       no longer installed
+#   VisualStudioExptTeam.vscodeintellicode  no longer installed
