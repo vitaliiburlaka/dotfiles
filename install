@@ -139,10 +139,25 @@ if [ "$LINK_ONLY" = true ]; then
   exit 0
 fi
 
+# Resolve the native package manager even in a fresh shell that has not
+# loaded the newly linked startup files yet.
+. "$DOTFILES_DIR/lib/shell.sh"
+_dt_prefix="$(_dt_brew_prefix "$(uname -s)" "$(uname -m)")"
+if [ -n "$_dt_prefix" ]; then
+  export HOMEBREW_PREFIX="$_dt_prefix"
+  export PATH="$_dt_prefix/bin:$_dt_prefix/sbin:$PATH"
+fi
+unset _dt_prefix
+
 # ── Packages ─────────────────────────────────────────────────────────────
 echo
 echo "Installing packages..."
 if command -v brew > /dev/null 2>&1; then
+  if [ "$(uname -s)" = Darwin ] && [ "$(uname -m)" = arm64 ] &&
+     [ "$(brew --prefix)" = /usr/local ]; then
+    echo 'Refusing Intel Homebrew from an arm64 shell; use native /opt/homebrew.' >&2
+    exit 1
+  fi
   brew bundle --file="$DOTFILES_DIR/Brewfile"
 else
   echo "  Homebrew not found. Install it from https://brew.sh, then re-run."
@@ -152,12 +167,12 @@ fi
 if [ ! -d "$HOME/.nvm" ]; then
   echo
   echo "Installing nvm and the latest LTS node..."
-  curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.2/install.sh | bash
+  curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.2/install.sh | PROFILE=/dev/null bash
   export NVM_DIR="$HOME/.nvm"
   # shellcheck disable=SC1091
   [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
   nvm install --lts
-  nvm alias default node
+  nvm alias default 'lts/*'
 fi
 
 # VS Code extensions

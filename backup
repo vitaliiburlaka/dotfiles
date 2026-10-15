@@ -115,8 +115,6 @@ done <<< "$(managed_pairs)"
 # likely to be lost, precisely because nothing else is tracking them.
 for extra in \
   "$HOME/.zprofile" \
-  "$HOME/.zshenv" \
-  "$HOME/.profile" \
   "$HOME/.inputrc" \
   "$HOME/.editorconfig" \
   "$HOME/.ssh/config" \

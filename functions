@@ -154,7 +154,7 @@ pdf-merge() {
 # into ./backup/ unless --keep-source is given.
 flac-to-tracks() {
   local cuefile="" album="" keep_source=false
-  local f track title newname
+  local f track title newname tagger
 
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -168,7 +168,11 @@ flac-to-tracks() {
     esac
   done
 
-  _dt_require flac-to-tracks cuebreakpoints shnsplit cuetag.sh metaflac || return 1
+  # Homebrew calls the tagging helper cuetag.sh; Linux distributions may
+  # install it as cuetag instead.
+  tagger=cuetag.sh
+  command -v "$tagger" >/dev/null 2>&1 || tagger=cuetag
+  _dt_require flac-to-tracks cuebreakpoints shnsplit "$tagger" metaflac || return 1
 
   [ -n "$cuefile" ] || cuefile="$(_dt_first_match '*.cue')"
   album="$(_dt_first_match '*.flac')"
@@ -185,7 +189,7 @@ flac-to-tracks() {
   echo "Splitting $album using $cuefile ..."
   cuebreakpoints "$cuefile" | shnsplit -o flac "$album" || return 1
   # Tag while the names are still predictable, then rename from the tags.
-  cuetag.sh "$cuefile" split-track*.flac || return 1
+  "$tagger" "$cuefile" split-track*.flac || return 1
 
   _dt_ls_match 'split-track*.flac' | while IFS= read -r f; do
     [ -n "$f" ] || continue

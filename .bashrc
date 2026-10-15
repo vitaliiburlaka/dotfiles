@@ -4,14 +4,15 @@
 # not be second-class. This mirrors .zshrc: same Homebrew prefix detection,
 # same single PATH block, same lazy nvm.
 
-# ── Homebrew ─────────────────────────────────────────────────────────────
-# /opt/homebrew on Apple Silicon, /usr/local on Intel. Detected with a
-# directory test rather than `brew --prefix`, which is a subprocess. Defined
-# first because the completion setup below needs it.
-if [ -d /opt/homebrew ]; then
-    export HOMEBREW_PREFIX=/opt/homebrew
-else
-    export HOMEBREW_PREFIX=/usr/local
+# Shared helpers are installed as a symlink by ./install --link-only.
+[ -r "$HOME/.shell-common.sh" ] && . "$HOME/.shell-common.sh"
+if command -v _dt_brew_prefix >/dev/null 2>&1; then
+    HOMEBREW_PREFIX="$(_dt_brew_prefix "$(uname -s)" "$(uname -m)")"
+    if [ -n "$HOMEBREW_PREFIX" ]; then
+        export HOMEBREW_PREFIX
+    else
+        unset HOMEBREW_PREFIX
+    fi
 fi
 
 # ── PATH ─────────────────────────────────────────────────────────────────
@@ -31,26 +32,32 @@ _path_prepend() {
 # inside an untrusted checkout. .zshrc gets this from `typeset -U` plus a
 # glob filter; bash has neither, so it is spelled out.
 _path_sanitize() {
-    local entry out= saved_ifs="$IFS"
-    IFS=:
-    for entry in $PATH; do
-        [ -n "$entry" ] || continue
-        case ":$out:" in
-            *":$entry:"*) ;;
-            *) out="${out:+$out:}$entry" ;;
+    local entry out=
+    local remaining="$PATH"
+    while :; do
+        entry="${remaining%%:*}"
+        case "$remaining" in
+            *:*) remaining="${remaining#*:}" ;;
+            *) remaining= ;;
         esac
+        if [ -n "$entry" ]; then
+            case ":$out:" in
+                *":$entry:"*) ;;
+                *) out="${out:+$out:}$entry" ;;
+            esac
+        fi
+        [ -n "$remaining" ] || break
     done
-    IFS="$saved_ifs"
     PATH="$out"
 }
 
-_path_prepend "$HOMEBREW_PREFIX/sbin"
-_path_prepend "$HOMEBREW_PREFIX/bin"
+if [ -n "${HOMEBREW_PREFIX:-}" ]; then
+    _path_prepend "$HOMEBREW_PREFIX/sbin"
+    _path_prepend "$HOMEBREW_PREFIX/bin"
+fi
 _path_prepend "$HOME/bin"
 _path_prepend "$HOME/.local/bin"
-
-# Miniconda is installed as a cask, so it lives under Caskroom.
-_path_prepend "$HOMEBREW_PREFIX/Caskroom/miniconda/base/condabin"
+_path_prepend "$HOME/.opencode/bin"
 
 export PATH
 
@@ -64,14 +71,15 @@ HISTFILESIZE=50000
 shopt -s histappend      # append rather than overwrite on exit
 shopt -s checkwinsize    # keep LINES/COLUMNS right after each command
 
+[ ! -r "$HOME/.secret" ] || . "$HOME/.secret"
+
 # ── Aliases ──────────────────────────────────────────────────────────────
 if [ -f ~/.aliases ]; then
     . ~/.aliases
 fi
 
 # ── Prompt ───────────────────────────────────────────────────────────────
-if tput setaf 1 &> /dev/null; then
-    tput sgr0
+if [ -t 1 ] && command -v tput >/dev/null 2>&1 && tput setaf 1 &> /dev/null; then
     reset=$(tput sgr0)
     yellow=$(tput setaf 3)
 else
@@ -81,8 +89,8 @@ fi
 
 # Completion. Reuses $HOMEBREW_PREFIX rather than calling `brew --prefix`
 # twice as a subprocess, which is what this block used to do.
-if [ -f "$HOMEBREW_PREFIX/share/bash-completion/bash_completion" ]; then
-    . "$HOMEBREW_PREFIX/share/bash-completion/bash_completion"
+if [ -f "${HOMEBREW_PREFIX:-}/share/bash-completion/bash_completion" ]; then
+    . "${HOMEBREW_PREFIX:-}/share/bash-completion/bash_completion"
 elif [ -f /etc/bash_completion ]; then
     . /etc/bash_completion
 elif [ -f /Library/Developer/CommandLineTools/usr/share/git-core/git-completion.bash ]; then
@@ -105,35 +113,35 @@ fi
 # .zshrc, which this file used to lack.
 export NVM_DIR="$HOME/.nvm"
 
-_nvm_default_bin() {
-    local want bin
-    [ -r "$NVM_DIR/alias/default" ] && want=$(cat "$NVM_DIR/alias/default")
-    for bin in "$NVM_DIR/versions/node/$want/bin" "$NVM_DIR/versions/node/v$want/bin"; do
-        [ -d "$bin" ] && { printf '%s' "$bin"; return 0; }
-    done
-    # Aliases like "node", "stable" or "lts/*" need nvm itself to resolve;
-    # approximate with the highest installed version.
-    bin=$(ls -1d "$NVM_DIR"/versions/node/*/ 2>/dev/null | sort -V | tail -1)
-    [ -n "$bin" ] && printf '%s' "${bin%/}/bin"
-}
+if command -v _dt_nvm_default_bin >/dev/null 2>&1; then
+    _path_prepend "$(_dt_nvm_default_bin)"
+fi
 
-_path_prepend "$(_nvm_default_bin)"
-unset -f _nvm_default_bin
-
-# Last word on PATH, after every addition above.
-_path_sanitize
-export PATH
-
-nvm() {
-    unset -f nvm
-    # shellcheck disable=SC1091
-    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-    # shellcheck disable=SC1091
-    [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"
-    nvm "$@"
-}
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+    nvm() {
+        unset -f nvm
+        if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+            printf '%s\n' 'nvm: installation is missing' >&2
+            return 127
+        fi
+        . "$NVM_DIR/nvm.sh"
+        if ! declare -F nvm >/dev/null; then
+            printf '%s\n' 'nvm: installation did not define nvm' >&2
+            return 127
+        fi
+        [ ! -s "$NVM_DIR/bash_completion" ] || . "$NVM_DIR/bash_completion"
+        nvm "$@"
+    }
+fi
 
 # ── Functions ────────────────────────────────────────────────────────────
 if [ -f ~/.functions ]; then
     . ~/.functions
 fi
+[ ! -r "$HOME/.cargo/env" ] || . "$HOME/.cargo/env"
+_path_sanitize
+export PATH
+if [ -t 0 ]; then
+    export GPG_TTY="$(tty 2>/dev/null)"
+fi
+:

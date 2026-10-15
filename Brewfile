@@ -11,8 +11,7 @@
 # To refresh after installing something new:
 #   brew bundle dump --file=Brewfile --force --describe
 
-tap "homebrew/services"
-tap "teamookla/speedtest"          # official Ookla speedtest CLI
+tap "teamookla/speedtest" if OS.mac? # official Ookla speedtest CLI
 
 # ── Shell ────────────────────────────────────────────────────────────────
 brew "zsh-syntax-highlighting"     # fish-style highlighting; sourced by .zshrc
@@ -26,7 +25,7 @@ brew "htop"                        # interactive process viewer
 brew "bc"                          # arbitrary precision calculator
 brew "yq"                          # YAML/JSON/XML processor, jq for YAML
 brew "gnupg"                       # GNU Privacy Guard (OpenPGP)
-brew "pinentry-mac"                # native passphrase prompt for gnupg
+brew "pinentry-mac" if OS.mac? # native passphrase prompt for gnupg
 
 # ── Network ──────────────────────────────────────────────────────────────
 brew "bind"                        # provides dig and host; `ip`/`ips`
@@ -34,7 +33,7 @@ brew "bind"                        # provides dig and host; `ip`/`ips`
 brew "mtr"                         # traceroute and ping in one tool
 brew "iperf3"                      # measure TCP/UDP/SCTP bandwidth
 brew "httpie"                      # friendlier curl for HTTP APIs
-brew "teamookla/speedtest/speedtest"  # speedtest.net CLI
+brew "teamookla/speedtest/speedtest" if OS.mac? # speedtest.net CLI
 
 # ── Media ────────────────────────────────────────────────────────────────
 brew "ghostscript"                 # gs — required by pdf-compress/pdf-merge
@@ -50,23 +49,21 @@ brew "shntool"                     # shnsplit, used by flac-to-tracks
 brew "exiftool"                    # read/write EXIF metadata
 
 # ── Apple / iOS development ──────────────────────────────────────────────
-brew "swiftformat"                 # Swift formatter
-brew "swiftlint"                   # Swift style and conventions linter
-brew "xcodegen"                    # generate .xcodeproj from a YAML spec
+brew "swiftformat" if OS.mac? # Swift formatter
+brew "swiftlint" if OS.mac? # Swift style and conventions linter
+brew "xcodegen" if OS.mac? # generate .xcodeproj from a YAML spec
 
 # ── Other development ────────────────────────────────────────────────────
-brew "python@3.10"                 # pinned interpreter; note that
-                                   # vscode-settings.json points at
-                                   # /usr/local/bin/python3
+brew "python@3.10"                 # project compatibility; select interpreters per project
 brew "skaffold"                    # Kubernetes build/deploy dev loop
-brew "molten-vk"                   # Vulkan implemented on top of Metal
+brew "molten-vk" if OS.mac? # Vulkan implemented on top of Metal
 
 # ── Security research ────────────────────────────────────────────────────
 brew "aircrack-ng"                 # Wi-Fi security auditing
 brew "hashcat"                     # password recovery / hash cracking
 
 # ── macOS utilities ──────────────────────────────────────────────────────
-brew "blueutil"                    # get/set bluetooth state from the CLI
+brew "blueutil" if OS.mac? # get/set bluetooth state from the CLI
 brew "innoextract"                 # unpack Inno Setup (.exe) installers
 
 # ── Fun ──────────────────────────────────────────────────────────────────
@@ -75,22 +72,17 @@ brew "fortune"                     # fortune-cookie generator
 brew "neofetch"                    # system info banner
 
 # ── Applications ─────────────────────────────────────────────────────────
-cask "iterm2"                      # terminal; loads its prefs from this repo
+cask "iterm2" if OS.mac? # terminal; loads its prefs from this repo
                                    # (Preferences > General > Preferences)
-cask "miniconda"                   # conda; .zshrc loads it lazily from
-                                   # $HOMEBREW_PREFIX/Caskroom/miniconda/base
-cask "postman"                     # API development client
-cask "github-copilot-for-xcode"    # Copilot as an Xcode extension
-cask "discord"                     # voice and text chat
-cask "obs"                         # live streaming and screen recording
-cask "typora"                      # markdown editor
-cask "musicbrainz-picard"          # music tagger, pairs with the flac/alac
+cask "postman" if OS.mac? # API development client
+cask "github-copilot-for-xcode" if OS.mac? # Copilot as an Xcode extension
+cask "discord" if OS.mac? # voice and text chat
+cask "obs" if OS.mac? # live streaming and screen recording
+cask "musicbrainz-picard" if OS.mac? # music tagger, pairs with the flac/alac
                                    # conversion functions
-cask "diffusionbee"                # run Stable Diffusion locally
-cask "upscayl"                     # AI image upscaler
-cask "monitorcontrol"              # external monitor brightness/volume
-cask "iina"                        # modern macOS media player
-cask "vlc"                         # plays everything else
+cask "monitorcontrol" if OS.mac? # external monitor brightness/volume
+cask "iina" if OS.mac? # modern macOS media player
+cask "vlc" if OS.mac? # plays everything else
 
 # Note: node is deliberately absent. It is managed by nvm, installed via the
 # official nvm-sh installer (see `install`), because the repo already has a
@@ -99,3 +91,4 @@ cask "vlc"                         # plays everything else
 #
 # Also absent, and previously listed in the old brew.sh despite never being
 # installed on this machine: jq, zsh, zsh-completions, highlight, macvim.
+brew "pinentry" if OS.linux?       # terminal passphrase prompt

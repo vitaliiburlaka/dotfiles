@@ -120,23 +120,30 @@ archive_finalize() {
 # manages, one per line. Single source of truth: `install` links these and
 # `backup` copies them, so the two can never disagree about the list.
 managed_pairs() {
-  local st_dir
+  local st_dir app_support
+  case "$(uname -s)" in
+    Darwin) app_support="$HOME/Library/Application Support" ;;
+    *) app_support="${XDG_CONFIG_HOME:-$HOME/.config}" ;;
+  esac
   cat <<EOF
 .zshrc|$HOME/.zshrc
+.zshenv|$HOME/.zshenv
+.profile|$HOME/.profile
 .bashrc|$HOME/.bashrc
 .bash_profile|$HOME/.bash_profile
 .aliases|$HOME/.aliases
 functions|$HOME/.functions
 .gitconfig|$HOME/.gitconfig
 .npmrc|$HOME/.npmrc
-vscode-settings.json|$HOME/Library/Application Support/Code/User/settings.json
+lib/shell.sh|$HOME/.shell-common.sh
+vscode-settings.json|$app_support/Code/User/settings.json
 EOF
   # Sublime Text 4 dropped the version suffix from its support directory; use
   # whichever layout this machine actually has, rather than inventing one for
   # a version that is not installed.
-  for st_dir in "Sublime Text" "Sublime Text 3"; do
-    if [ -d "$HOME/Library/Application Support/$st_dir" ]; then
-      echo "sublime/Preferences.sublime-settings|$HOME/Library/Application Support/$st_dir/Packages/User/Preferences.sublime-settings"
+  for st_dir in "Sublime Text" "Sublime Text 3" "sublime-text" "sublime-text-3"; do
+    if [ -d "$app_support/$st_dir" ]; then
+      echo "sublime/Preferences.sublime-settings|$app_support/$st_dir/Packages/User/Preferences.sublime-settings"
     fi
   done
 }

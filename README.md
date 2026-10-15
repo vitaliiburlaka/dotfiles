@@ -3,8 +3,10 @@
 Personal macOS development setup: zsh, git, Homebrew, node, VS Code, iTerm2.
 Take anything you want, but at your own risk.
 
-Works on both Intel and Apple Silicon — Homebrew's prefix is detected at
-runtime rather than hardcoded, so nothing here assumes `/usr/local`.
+Supports Intel macOS, Apple-silicon macOS, and Linux with bash 3.2+ or zsh.
+Homebrew selection follows the running architecture; Linux uses Linuxbrew
+when installed. A Rosetta shell deliberately selects the Intel prefix.
+macOS desktop applications and hardware utilities are skipped on Linux.
 
 **Contents**
 
@@ -25,19 +27,23 @@ runtime rather than hardcoded, so nothing here assumes `/usr/local`.
 
 ## Requirements
 
-macOS, plus:
+macOS or Linux, plus:
 
 | Needed | For |
 | ------ | --- |
 | Xcode Command Line Tools | `git`, `make` — not in stock macOS |
 | [Homebrew](https://brew.sh) | everything in the `Brewfile` |
-| zsh + [oh-my-zsh](https://ohmyz.sh) | `.zshrc` (zsh is the macOS default since Catalina) |
+| zsh (optional [oh-my-zsh](https://ohmyz.sh)) | `.zshrc`; falls back to a basic prompt/completion without oh-my-zsh |
 
 bash is supported as a fallback shell but is not the daily driver.
+On Linux, install bash/zsh, git and required command-line packages using your
+normal distribution package manager or Linuxbrew. GUI aliases require the
+corresponding desktop applications; `public-key` supports `wl-copy` or `xclip`.
+The Linux `ip` command is preserved; use `public-ip` for your external address.
 
 ## Install
 
-On a brand new Mac:
+On a brand new Mac (these commands are not for Linux):
 
 ```bash
 sudo softwareupdate -i -a
@@ -67,7 +73,7 @@ first.
 1. Symlinks every managed file into `$HOME`, backing up anything already
    there (see [Backups](#backups)).
 2. Creates an empty `chmod 600` `~/.secret` if none exists.
-3. Runs `brew bundle` against the `Brewfile`.
+3. Runs `brew bundle` against the platform-gated `Brewfile`, if Homebrew exists.
 4. Installs nvm and the latest LTS node, if `~/.nvm` is absent.
 5. Runs `code.sh` to install VS Code extensions.
 
@@ -106,7 +112,8 @@ vscode-settings.json     VS Code settings
 
 | Repo file | Linked to |
 | --------- | --------- |
-| `.zshrc` | `~/.zshrc` |
+| `.zshrc`, `.zshenv`, `.profile` | corresponding files in `~` |
+| `lib/shell.sh` | `~/.shell-common.sh` |
 | `.bashrc`, `.bash_profile` | `~/.bashrc`, `~/.bash_profile` |
 | `.aliases` | `~/.aliases` |
 | `functions` | `~/.functions` |
@@ -117,6 +124,10 @@ vscode-settings.json     VS Code settings
 
 The list lives in one place — `managed_pairs()` in `lib/archive.sh` — so
 `install` links and `backup` snapshots exactly the same set.
+
+On Linux, VS Code uses `${XDG_CONFIG_HOME:-~/.config}/Code/User/settings.json`;
+Sublime uses its existing `sublime-text` or `sublime-text-3` directory there.
+On macOS, the existing `~/Library/Application Support` locations are used.
 
 `com.googlecode.iterm2.plist` is **not** symlinked. iTerm2 reads it directly;
 see [Editors and terminal](#editors-and-terminal).
@@ -287,7 +298,7 @@ It captures:
 - every managed file, resolved *through* its symlink so the archive holds
   real content rather than pointers back into this repo
 - unmanaged shell config that exists but is tracked nowhere — `.zprofile`,
-  `.zshenv`, `.profile`, `.inputrc`, `.editorconfig`, `~/.ssh/config`,
+  `.inputrc`, `.editorconfig`, `~/.ssh/config`,
   `~/.config/git/ignore`
 - snapshots of installed Homebrew formulae and casks, VS Code extensions, and
   the dotfiles commit it ran from
@@ -316,8 +327,8 @@ so no token is stored in `.gitconfig` either.
 
 ## Packages
 
-`Brewfile` lists 33 formulae, 13 casks and 2 taps — top-level intent only,
-generated from `brew leaves --installed-on-request` and then annotated.
+`Brewfile` records top-level package intent and gates macOS-only dependencies
+and all casks behind `OS.mac?`. Conda and DiffusionBee are deliberately absent.
 Transitive dependencies are left for Homebrew to resolve.
 
 ```bash
@@ -358,7 +369,7 @@ Credentials for `github.com` and `gist.github.com` are resolved by
 
 ## Shell startup
 
-zsh starts in roughly **0.2s**, bash in under **0.1s**. Both were multi-second
+zsh starts in historically roughly **0.2s**, bash in under **0.1s**. Both were multi-second
 before; the work to get there is worth not undoing by accident.
 
 What keeps it fast:
@@ -367,8 +378,6 @@ What keeps it fast:
   is put on `PATH` directly, so `node` and `npm` work immediately. `nvm`
   itself is a stub that loads the real thing on first call. Sourcing nvm plus
   its completions costs ~1.9s.
-- **conda is lazy** the same way — its `shell.zsh hook` spawns Python and
-  costs ~0.7s.
 - **oh-my-zsh's auto-update check is disabled**; run `omz update` by hand.
 - **No explicit `gpgconf --launch gpg-agent`** — gpg starts the agent on
   demand via its socket. The explicit launch cost ~1.4s per shell.
@@ -402,8 +411,9 @@ elements inherited from a parent process.
 
 **VS Code** — `vscode-settings.json` is symlinked into place; `code.sh`
 installs the extension list. Regenerate it with `code --list-extensions`.
-`python.defaultInterpreterPath` is machine-specific: VS Code settings have no
-shell expansion, so that absolute path needs editing on Apple Silicon.
+`python.defaultInterpreterPath` is `python3`, resolved via PATH. Select the
+appropriate project virtual environment in the Python extension; an existing
+workspace interpreter selection is not overwritten by this setting.
 
 **iTerm2** — the plist is not symlinked. iTerm2 loads it itself:
 **Settings → General → Preferences → Load preferences from a custom folder**,
@@ -441,8 +451,9 @@ backup archive. The links are all listed in [What goes where](#what-goes-where).
 
 A few decisions that are easy to undo without noticing why they were made:
 
-- **Homebrew's prefix is detected with a directory test**, not
-  `brew --prefix`. The latter is a subprocess and would put startup cost back.
+- **Homebrew selection checks platform, running architecture and executable**,
+  without invoking `brew` at shell startup. An arm64 shell will not silently
+  fall back to the standard Intel prefix.
 - **The managed-file list lives in `lib/archive.sh`**, not in `install`, so
   `backup` cannot drift out of sync with it.
 - **`zip -y`** is required when archiving: without it, zip follows symlinks,
@@ -454,3 +465,21 @@ A few decisions that are easy to undo without noticing why they were made:
 - **`.aliases` loads after oh-my-zsh**, so it wins any name collision. That is
   convenient and also how a redefined `gbr` quietly shadowed the plugin's
   `git branch --remote` for a long time.
+
+## Portability validation
+
+`tests/run-sandboxed.sh` copies the repository to a temporary directory and
+runs tests with temporary homes and a controlled environment. On macOS the
+additional sandbox blocks network access, reads of your real home and writes
+outside the temporary directory. It never runs the installer against your
+real home, calls package installers, or sources your real secrets/history.
+Temporary fixtures and rollback snapshots are retained for inspection.
+
+The suite checks bash 3.2 and zsh startup, absent and mocked optional tools,
+Intel/ARM Homebrew selection, nvm defaults and lazy loading, PATH hygiene,
+platform aliases, editor targets, Brewfile gates, and repeatable link-only
+installation. Linux/Apple-silicon branches are simulated on the host; this
+is not a claim of native Linux/ARM runtime or package-install validation.
+iTerm2 preferences remain macOS-specific and retain your profile directories.
+Architecture-specific Node/Python/Rust binaries and project environments still
+need rebuilding when moving to a different architecture.

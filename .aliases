@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+_dt_alias_os="$(uname -s)"
+
 # Navigation Shortcuts: .., ..., ...., ....., ~ and -
 alias ..="cd .."
 alias ...="cd ../.."
@@ -9,7 +11,11 @@ alias home="cd ~"       # `cd` is probably faster to type though
 alias -- -="cd -"       # jump to previous destination
 
 # File system Shortcuts
-alias o='open .'
+if [ "$_dt_alias_os" = Darwin ]; then
+  alias o='open .'
+else
+  alias o='xdg-open .'
+fi
 alias p="cd ~/Projects"
 alias apps='cd ~/Applications'
 alias docs='cd ~/Documents'
@@ -21,7 +27,11 @@ alias desktop='cd ~/Desktop'
 
 # Directory listing with colors
 alias sl=ls
-alias ls='ls -G'        # Compact view, show colors
+if [ "$_dt_alias_os" = Darwin ]; then
+  alias ls='ls -G'
+else
+  alias ls='ls --color=auto'
+fi
 alias la='ls -A'        # Compact view, show hidden
 alias ll='ls -alF'
 alias l='ls -CF'
@@ -39,12 +49,17 @@ alias moon='curl -4 https://wttr.in/Moon'
 # Desktop Apps
 # `open -a <name>` resolves via LaunchServices, so it keeps working when an
 # app moves and does not depend on the bundle's exact capitalisation.
-alias xcode='open -a Xcode'
-alias safari='open -a Safari'
-alias chrome='open -a "Google Chrome"'
-alias f='open -a Finder '
-alias textedit='open -a TextEdit'
-alias discord='open -a Discord'
+[ "$_dt_alias_os" != Darwin ] || alias xcode='open -a Xcode'
+[ "$_dt_alias_os" != Darwin ] || alias safari='open -a Safari'
+if [ "$_dt_alias_os" = Darwin ]; then
+  alias chrome='open -a "Google Chrome"'
+  alias discord='open -a Discord'
+else
+  alias chrome='google-chrome'
+  alias discord='discord'
+fi
+[ "$_dt_alias_os" != Darwin ] || alias f='open -a Finder '
+[ "$_dt_alias_os" != Darwin ] || alias textedit='open -a TextEdit'
 
 # Utils
 # -delete rather than `| xargs -0 rm`, which runs rm with no arguments (and
@@ -53,11 +68,15 @@ alias dsclean='find . -type f -name .DS_Store -delete'
 alias encode-file='iconv -f ISO-8859-1 -t UTF-8'
 alias usage='df -h'
 alias space='du -sh ./*'
-alias tu='top -o cpu'
+if [ "$_dt_alias_os" = Darwin ]; then
+  alias tu='top -o cpu'
+else
+  alias tu='top -o %CPU'
+fi
 alias trim="tr -s \" \" | sed 's/^[ ]//g'"
 alias total-files='ls -1 | wc -l | trim'
 # Stop Spotlight indexing node_modules
-alias node-spotlight-ignore="find . -type d -path '*node_modules/*' -prune -o -type d -name 'node_modules' -exec touch '{}/.metadata_never_index' \;"
+[ "$_dt_alias_os" != Darwin ] || alias node-spotlight-ignore="find . -type d -path '*node_modules/*' -prune -o -type d -name 'node_modules' -exec touch '{}/.metadata_never_index' \;"
 
 # Editing and reloading shell config
 alias sb="source ~/.bashrc"
@@ -77,7 +96,27 @@ alias bdump='brew bundle dump --file=~/.dotfiles/Brewfile --force --describe'
 # here. This file is sourced after oh-my-zsh, so anything defined here wins
 # silently, which is how `gbr` used to shadow omz's `git branch --remote`.
 alias gti="git"
-alias public-key='for k in ~/.ssh/id_ed25519.pub ~/.ssh/id_rsa.pub; do [ -f "$k" ] && pbcopy < "$k" && echo "copied $k to clipboard" && break; done'
+_dt_copy_public_key() {
+  local key
+  for key in "$HOME/.ssh/id_ed25519.pub" "$HOME/.ssh/id_rsa.pub"; do
+    [ -f "$key" ] || continue
+    if command -v pbcopy >/dev/null 2>&1; then
+      pbcopy < "$key" || return
+    elif command -v wl-copy >/dev/null 2>&1; then
+      wl-copy < "$key" || return
+    elif command -v xclip >/dev/null 2>&1; then
+      xclip -selection clipboard < "$key" || return
+    else
+      printf '%s\n' 'public-key: install wl-copy or xclip for clipboard support' >&2
+      return 1
+    fi
+    printf 'copied %s to clipboard\n' "$key"
+    return 0
+  done
+  printf '%s\n' 'public-key: no supported public key found' >&2
+  return 1
+}
+alias public-key='_dt_copy_public_key'
 
 # Docker and K8s
 alias dps="docker ps"
@@ -88,31 +127,40 @@ alias k="kubectl"
 # Public IP. The long-standing `dig +short myip.opendns.com @resolver1.opendns.com`
 # trick returns an empty answer now — the resolver still resolves, it just no
 # longer answers that query — so this uses HTTPS with a second source as backup.
-alias ip="curl -4 -s --max-time 5 https://icanhazip.com || curl -4 -s --max-time 5 https://ifconfig.me"
-alias lip="ipconfig getifaddr en0"
-alias ips="ifconfig -a | grep -o 'inet6\? \(addr:\)\?\s\?\(\(\([0-9]\+\.\)\{3\}[0-9]\+\)\|[a-fA-F0-9:]\+\)' | awk '{ sub(/inet6? (addr:)? ?/, \"\"); print }'"
+alias public-ip="curl -4 -s --max-time 5 https://icanhazip.com || curl -4 -s --max-time 5 https://ifconfig.me"
+[ "$_dt_alias_os" != Darwin ] || alias ip=public-ip
+if [ "$_dt_alias_os" = Darwin ]; then
+  alias lip='ipconfig getifaddr en0'
+else
+  alias lip="command ip -4 route get 1.1.1.1 | awk '{for(i=1;i<=NF;i++) if(\$i==\"src\") print \$(i+1)}'"
+fi
+if [ "$_dt_alias_os" = Darwin ]; then
+  alias ips="ifconfig -a | awk '/inet6? / {print \$2}'"
+else
+  alias ips="command ip -o addr show | awk '{print \$4}'"
+fi
 
 # Show active network interfaces
 # Uses awk rather than pcregrep: pcregrep is only installed here as a
 # transitive dependency and would disappear on the next `brew autoremove`.
-alias ifactive="ifconfig | awk '/^[a-z0-9]+:/{iface=substr(\$1, 1, length(\$1)-1)} /status: active/{print iface}'"
+[ "$_dt_alias_os" != Darwin ] || alias ifactive="ifconfig | awk '/^[a-z0-9]+:/{iface=substr(\$1, 1, length(\$1)-1)} /status: active/{print iface}'"
 
 # Flush your DNS cache
 # dscacheutil alone stopped being sufficient years ago; mDNSResponder holds
 # its own cache and must be signalled too.
-alias flushdns="sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder && echo 'DNS cache flushed'"
+[ "$_dt_alias_os" != Darwin ] || alias flushdns="sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder && echo 'DNS cache flushed'"
 
 # Usefull stuff for presentation and seeing dotfiles
-alias hidedesktop="defaults write com.apple.finder CreateDesktop -bool false && killall Finder"
-alias showdesktop="defaults write com.apple.finder CreateDesktop -bool true && killall Finder"
-alias showall='defaults write com.apple.finder AppleShowAllFiles YES && killall Finder'
-alias hideall='defaults write com.apple.finder AppleShowAllFiles NO && killall Finder'
+[ "$_dt_alias_os" != Darwin ] || alias hidedesktop="defaults write com.apple.finder CreateDesktop -bool false && killall Finder"
+[ "$_dt_alias_os" != Darwin ] || alias showdesktop="defaults write com.apple.finder CreateDesktop -bool true && killall Finder"
+[ "$_dt_alias_os" != Darwin ] || alias showall='defaults write com.apple.finder AppleShowAllFiles YES && killall Finder'
+[ "$_dt_alias_os" != Darwin ] || alias hideall='defaults write com.apple.finder AppleShowAllFiles NO && killall Finder'
 
 # macOS has no `md5sum`, so use `md5` as a fallback
-command -v md5sum > /dev/null || alias md5sum="md5"
+command -v md5sum >/dev/null 2>&1 || { command -v md5 >/dev/null 2>&1 && alias md5sum="md5"; }
 
 # macOS has no `sha1sum`, so use `shasum` as a fallback
-command -v sha1sum > /dev/null || alias sha1sum="shasum"
+command -v sha1sum >/dev/null 2>&1 || { command -v shasum >/dev/null 2>&1 && alias sha1sum="shasum"; }
 
 # URL-encode strings
 alias urlencode='python3 -c "import sys, urllib.parse; print(urllib.parse.quote_plus(sys.argv[1]))"'
@@ -128,7 +176,7 @@ alias urlencode='python3 -c "import sys, urllib.parse; print(urllib.parse.quote_
 
 # Sleep the display (when going AFK). The old CGSession path was removed
 # from User.menu.
-alias afk='pmset displaysleepnow'
+[ "$_dt_alias_os" != Darwin ] || alias afk='pmset displaysleepnow'
 
 # Print each PATH entry on a separate line.
 # Piped through tr rather than using ${PATH//:/\\n}: zsh does not word-split
@@ -137,4 +185,6 @@ alias path='printf "%s" "$PATH" | tr ":" "\n"'
 
 # local logs
 # /var/log/system.log is near-empty since macOS moved to unified logging.
-alias syslog='log show --last 30m --style compact'
+[ "$_dt_alias_os" != Darwin ] || alias syslog='log show --last 30m --style compact'
+unset _dt_alias_os
+:
